@@ -65,3 +65,18 @@ img {
   max-width: 100%;
   display: block;
 }
+
+/* 화면 스텁 컨테이너 (트랙 C·D·E 본문 채우기 전 placeholder) */
+.screen-stub {
+  margin: var(--space-4) 0 var(--space-2);
+  padding: var(--space-5) var(--space-4);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-card);
+  color: var(--gray-500);
+}
+
+/* 스토어 값 미리보기 메타 텍스트 */
+.stub-meta {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}

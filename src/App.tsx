@@ -4,6 +4,7 @@ import ConstraintsScreen from './screens/ConstraintsScreen';
 import ResultScreen from './screens/ResultScreen';
 import ConfirmScreen from './screens/ConfirmScreen';
 import OperateScreen from './screens/OperateScreen';
+import AppShell from './components/AppShell';
 
 /**
  * 라우팅 스켈레톤 — 5개 화면(생성/제약입력/추천결과/확정/운영)만 연결.
@@ -11,7 +12,8 @@ import OperateScreen from './screens/OperateScreen';
  */
 export default function App() {
   return (
-    <Routes>
+    <AppShell>
+      <Routes>
       <Route path="/" element={<Navigate to="/create" replace />} />
       <Route path="/create" element={<CreateScreen />} />
       <Route path="/constraints" element={<ConstraintsScreen />} />
@@ -20,6 +22,7 @@ export default function App() {
       <Route path="/operate" element={<OperateScreen />} />
       {/* catch-all → 생성 화면으로 */}
       <Route path="*" element={<Navigate to="/create" replace />} />
-    </Routes>
+      </Routes>
+    </AppShell>
   );
 }
