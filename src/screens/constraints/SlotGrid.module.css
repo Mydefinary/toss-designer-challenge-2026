@@ -1,0 +1,89 @@
+/* 주간 격자 — 시간(행) × 요일(열) */
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 각 행: 시간 라벨(28px) + 요일 5칸 */
+.row {
+  display: grid;
+  grid-template-columns: 28px repeat(5, 1fr);
+  gap: var(--space-1);
+}
+
+.corner {
+  /* 좌상단 빈칸 */
+}
+
+.dayHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  padding-bottom: var(--space-1);
+}
+
+.timeHead {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-1);
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+/* 셀 버튼 — 터치 타겟 ≥44px */
+.cell {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-chip);
+  background: var(--bg-base);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* ===== 상태별 색 (토큰) ===== */
+.available {
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--status-available);
+}
+
+.avoid {
+  background: var(--status-avoid-tint);
+  border-color: var(--status-avoid);
+  color: var(--status-avoid);
+}
+
+.unavailable {
+  background: var(--status-unavailable-tint);
+  border-color: var(--status-unavailable);
+  color: var(--status-unavailable);
+}
+
+/* 사유 패널 편집 중인 셀 강조 */
+.editing {
+  box-shadow: 0 0 0 2px var(--toss-gray);
+  z-index: 1;
+}
