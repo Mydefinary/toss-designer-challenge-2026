@@ -38,11 +38,11 @@
 
 | 상태 | 의미 | 예시 | 추천 처리 |
 |------|------|------|-----------|
-| **불가 (Unavailable)** | 아예 참석 불가능 | 외근, 미출근, 퇴근 후, 휴가 | 해당 슬롯 **후보 제외** |
+| **불가 (Unavailable)** | 아예 참석 불가능 | 외근, 미출근, 퇴근 후, 휴가, 선약된 회의 | 해당 슬롯 **후보 제외** |
 | **회피 선호 (Avoid)** | 가능하지만 피하고 싶음 | 점심 직후(졸림), 오전 집중업무 | **패널티 점수**, 후보 유지 |
 | **가능 (Available)** | 문제없이 회의 가능 | — | 만족 점수 |
 
-- → **기능 요구**: 참석자별로 시간대(요일×시간)마다 3단계 상태를 칩으로 입력. "불가"는 사유 태그(외근/휴가/퇴근후/미출근) 선택 가능.
+- → **기능 요구**: 참석자별로 시간대(요일×시간)마다 3단계 상태를 칩으로 입력. "불가"는 사유 태그(외근·휴가·퇴근후·미출근·**회의**) 중 선택하거나, **직접 입력(기타)** 으로 자유 텍스트 사유를 적을 수 있다. 우리가 정의한 태그 외의 사유(병원, 출장, 개인일정 등)도 누락 없이 기록 가능. 입력된 사유는 투명성 보드·슬롯 드릴다운에서 "왜 불가한지"로 그대로 노출된다.
 
 ### V3. 회의 장소 — 장소 유무
 시간이 맞아도 **장소(회의실)** 가 없으면 회의는 성립하지 않는다. 기존 도구가 자주 빠뜨리는 변수.
@@ -129,7 +129,7 @@ W_required > W_optional (필수자 제약을 우선)
 
 ### 3.7 주요 화면 (MVP 범위, 웹)
 1. **회의 생성** — 제목, 길이(1h 고정), 기간 범위, **온라인/오프라인(장소)**, 참석자 6명(필수/선택 토글)
-2. **제약 입력** — 참석자별 시간대 칩으로 불가/회피/가능 입력, 불가 사유 태그(외근·휴가·퇴근후·미출근)
+2. **제약 입력** — 참석자별 시간대 칩으로 불가/회피/가능 입력, 불가 사유 태그(외근·휴가·퇴근후·미출근·회의) 선택 또는 직접 입력(기타)
 3. **추천 결과 (핵심 화면)** — 두 영역이 함께 보인다.
    - **(a) 투명성 보드** — 6명 전원 × 시간대 히트맵. 누가 언제 가능/회피/불가인지 한눈에. "모두의 상황"을 명확히 펼쳐 양보의 근거를 제공.
    - **(b) 1~5순위 후보 카드** — 각 카드: 만족 인원(아바타 스택), **양보하는 사람·사유**, 장소 가용 뱃지.
@@ -202,10 +202,15 @@ W_required > W_optional (필수자 제약을 우선)
 ### 6.1 데이터 모델 (핵심 타입 스케치)
 ```ts
 type Availability = 'available' | 'avoid' | 'unavailable';
-type UnavailableReason = '외근' | '미출근' | '퇴근후' | '휴가';
+// 미리 정의된 사유 태그 + '기타'(직접 입력)
+type UnavailableReason = '외근' | '미출근' | '퇴근후' | '휴가' | '회의' | '기타';
 interface Attendee { id; name; role: 'required' | 'optional'; }
 interface Slot { day; startHour; } // 1h 고정
-interface ConstraintCell { attendeeId; slot; status: Availability; reason?: UnavailableReason; }
+interface ConstraintCell {
+  attendeeId; slot; status: Availability;
+  reason?: UnavailableReason;   // status === 'unavailable'일 때
+  reasonText?: string;          // reason === '기타'일 때 직접 입력한 자유 사유
+}
 interface MeetingConfig { title; rangeDays; location: 'online' | 'offline'; rooms?: Room[]; }
 interface RankedCandidate { slot; score; satisfied: Attendee[]; yielding: {attendee, reason}[]; roomAvailable: boolean; rank: 1|2|3|4|5; }
 ```
@@ -248,7 +253,7 @@ interface RankedCandidate { slot; score; satisfied: Attendee[]; yielding: {atten
 ## 9. 성공 기준 (검증 지표)
 
 - [ ] 6명을 필수/선택으로 구분해 입력할 수 있다 (V1)
-- [ ] 참석 상태를 불가·회피·가능 3단계로 입력하고, 불가 사유를 지정할 수 있다 (V2)
+- [ ] 참석 상태를 불가·회피·가능 3단계로 입력하고, 불가 사유를 태그(외근·휴가·퇴근후·미출근·회의)로 지정하거나 직접 입력(기타)할 수 있다 (V2)
 - [ ] 온라인/오프라인을 선택하고, 오프라인 시 회의실 가용이 후보에 반영된다 (V3)
 - [ ] 6명 전원의 가능/회피/불가 상황이 한 화면(투명성 보드)에 명확히 펼쳐진다
 - [ ] 특정 시간을 선택하면 **그 시간이 왜 부적합한지(누가 양보·어떤 제약)** 가 드릴다운으로 보인다
