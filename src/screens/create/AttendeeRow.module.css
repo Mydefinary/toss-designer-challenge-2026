@@ -1,0 +1,24 @@
+/* 참석자 한 행 — 아바타 + 이름 + 필수/선택 토글 */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 토글 폭 고정 — 행마다 정렬 일관성 유지 */
+.toggle {
+  flex-shrink: 0;
+  width: 128px;
+}
