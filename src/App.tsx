@@ -1,0 +1,25 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import CreateScreen from './screens/CreateScreen';
+import ConstraintsScreen from './screens/ConstraintsScreen';
+import ResultScreen from './screens/ResultScreen';
+import ConfirmScreen from './screens/ConfirmScreen';
+import OperateScreen from './screens/OperateScreen';
+
+/**
+ * 라우팅 스켈레톤 — 5개 화면(생성/제약입력/추천결과/확정/운영)만 연결.
+ * 실제 화면 UI 는 트랙 C·D·E 에서 구현한다.
+ */
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/create" replace />} />
+      <Route path="/create" element={<CreateScreen />} />
+      <Route path="/constraints" element={<ConstraintsScreen />} />
+      <Route path="/result" element={<ResultScreen />} />
+      <Route path="/confirm" element={<ConfirmScreen />} />
+      <Route path="/operate" element={<OperateScreen />} />
+      {/* catch-all → 생성 화면으로 */}
+      <Route path="*" element={<Navigate to="/create" replace />} />
+    </Routes>
+  );
+}

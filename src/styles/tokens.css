@@ -1,0 +1,74 @@
+/* 디자인 토큰 (PRD 5.1) — 토스 브랜드 톤 차용 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@latest/dist/web/static/pretendard.css');
+
+:root {
+  /* ===== 브랜드 컬러 (공식) ===== */
+  --toss-blue: #0064ff; /* Primary — 공식 */
+  --toss-gray: #202632; /* Text/Ink — 공식 */
+
+  /* ===== Primary 상태 ===== */
+  --toss-blue-hover: #0050c8;
+  --toss-blue-pressed: #0046b0;
+  --toss-blue-tint: #e8f1ff; /* 배경 강조 */
+
+  /* ===== 배경 ===== */
+  --bg-base: #ffffff;
+  --bg-secondary: #f2f4f6;
+
+  /* ===== Gray scale ===== */
+  --gray-50: #f9fafb;
+  --gray-100: #f2f4f6;
+  --gray-200: #e5e8eb;
+  --gray-300: #c9cdd2;
+  --gray-400: #8b95a1;
+  --gray-500: #4e5968;
+  --gray-700: #202632;
+
+  /* ===== 상태색 (참석 가능 상태) ===== */
+  --status-available: #0064ff; /* 가능 ● 블루 */
+  --status-avoid: #ff9500; /* 회피 ▲ 앰버 */
+  --status-unavailable: #f04452; /* 불가 ✕ 레드 */
+  --status-success: #00c880; /* 성공/확정 */
+
+  /* 상태 배경 틴트 (히트맵/칩 배경용) */
+  --status-available-tint: #e8f1ff;
+  --status-avoid-tint: #fff3e0;
+  --status-unavailable-tint: #fde7e9;
+  --status-success-tint: #e3f9f0;
+
+  /* ===== Radius ===== */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --radius-chip: 8px;
+  --radius-pill: 999px;
+
+  /* ===== Shadow ===== */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-emphasis: 0 6px 20px rgba(0, 100, 255, 0.18);
+
+  /* ===== Typography scale ===== */
+  --font-display: 700 32px/1.25 'Pretendard', sans-serif; /* Display 28–34 */
+  --font-title: 700 22px/1.3 'Pretendard', sans-serif; /* Title 20–24 */
+  --font-body: 400 15px/1.5 'Pretendard', sans-serif; /* Body 15–16 */
+  --font-caption: 400 13px/1.4 'Pretendard', sans-serif; /* Caption 12–13 */
+
+  --fs-display: 32px;
+  --fs-title: 22px;
+  --fs-body: 15px;
+  --fs-caption: 13px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ===== Spacing — 8pt 그리드 ===== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+}

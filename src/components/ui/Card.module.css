@@ -1,0 +1,18 @@
+.card {
+  background-color: var(--bg-base);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  border: 1px solid var(--gray-100);
+}
+
+.elevated {
+  box-shadow: var(--shadow-emphasis);
+  border-color: transparent;
+}
+
+.emphasized {
+  border: 1px solid var(--toss-blue);
+  box-shadow: var(--shadow-emphasis);
+  background-color: var(--toss-blue-tint);
+}
