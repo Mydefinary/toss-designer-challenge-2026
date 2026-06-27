@@ -1,0 +1,164 @@
+.container {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4) 0 var(--space-7);
+}
+
+/* ===== 시나리오 컨텍스트 배너 ===== */
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--toss-blue-tint);
+  border-radius: var(--radius-card);
+}
+
+.bannerTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.bannerTag {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--toss-blue);
+  background: var(--bg-base);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.bannerName {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-700);
+}
+
+.bannerGuide {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  line-height: 1.45;
+}
+
+/* ===== 섹션 공통 ===== */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--gray-700);
+}
+
+/* ===== (A) 미확정 가이드 카드 ===== */
+.guideCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-5) var(--space-4);
+}
+
+.guideTitle {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--gray-700);
+}
+
+.guideDesc {
+  margin: 0;
+  font-size: var(--fs-body);
+  color: var(--gray-500);
+  line-height: 1.5;
+}
+
+.guideAction {
+  margin-top: var(--space-2);
+}
+
+/* ===== 액션 영역 ===== */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.helper {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  line-height: 1.45;
+  text-align: center;
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--fs-caption);
+  color: var(--status-unavailable);
+  background: var(--status-unavailable-tint);
+  border-radius: var(--radius-chip);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.copied {
+  color: var(--status-success);
+  font-weight: var(--fw-semibold);
+}
+
+/* 안전 메시지 (확정됐으나 현재 후보 없음) */
+.safeMessage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+  padding: var(--space-5) var(--space-4);
+}
+
+.safeTitle {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--gray-700);
+}
+
+.safeDesc {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+/* ===== 순위 전환 트랜지션 (현재 카드) ===== */
+.promote {
+  animation: promoteIn 0.32s ease;
+}
+
+@keyframes promoteIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promote {
+    animation: none;
+  }
+}
