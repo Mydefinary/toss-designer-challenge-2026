@@ -1,0 +1,467 @@
+/* 결과 화면(트랙 D) 공용 스타일 — 토큰만 사용 */
+
+/* ===== 화면 레이아웃 ===== */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  /* 하단 고정 버튼에 가리지 않도록 여유 */
+  padding-bottom: var(--space-6);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+  margin: 0;
+}
+
+.sectionHint {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ===== 컨텍스트 헤더 ===== */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.headerTopRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.headerTitle {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  margin: 0;
+}
+
+/* ===== 순위 카드 ===== */
+.rankList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.rankCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.summaryBtn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: var(--space-4);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.summaryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+.rankBadgeTop {
+  min-width: 56px;
+  height: 30px;
+  font-size: var(--fs-body);
+  background: var(--toss-blue);
+  color: #ffffff;
+}
+
+.slotTime {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+  margin: var(--space-3) 0 0;
+}
+
+.slotTimeTop {
+  font-size: var(--fs-display);
+}
+
+.score {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.metaLabel {
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  margin-right: var(--space-1);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.expandHint {
+  font-size: var(--fs-caption);
+  color: var(--toss-blue);
+  font-weight: var(--fw-semibold);
+  margin-top: var(--space-3);
+}
+
+/* ===== 드릴다운 (펼침 트랜지션) ===== */
+.drilldown {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.28s ease,
+    opacity 0.28s ease;
+}
+
+.drilldownOpen {
+  max-height: 1200px;
+  opacity: 1;
+}
+
+.drilldownInner {
+  padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--gray-100);
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+}
+
+.breakdownTitle {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.breakdownList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breakdownItem {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--fs-caption);
+  color: var(--gray-700);
+  padding: var(--space-1) 0;
+}
+
+.bdPos {
+  color: var(--toss-blue);
+  font-weight: var(--fw-semibold);
+}
+
+.bdNeg {
+  color: var(--status-avoid);
+  font-weight: var(--fw-semibold);
+}
+
+.bdRoom {
+  color: var(--status-unavailable);
+  font-weight: var(--fw-semibold);
+}
+
+.bdZero {
+  color: var(--gray-400);
+}
+
+.breakdownTotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+  border-top: 1px dashed var(--gray-200);
+  padding-top: var(--space-2);
+}
+
+.reasonNote {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===== 투명성 보드 (히트맵) ===== */
+.boardToggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: var(--bg-secondary);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-gray);
+}
+
+.boardToggleCaret {
+  color: var(--gray-400);
+  font-size: var(--fs-caption);
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dayTabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.dayTab {
+  flex: 1;
+  padding: var(--space-2) 0;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--gray-200);
+  background: var(--bg-base);
+  color: var(--gray-500);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+
+.dayTabActive {
+  background: var(--toss-blue);
+  border-color: var(--toss-blue);
+  color: #ffffff;
+}
+
+/* 단일 일자 격자 (모바일 기본) */
+.gridSingle {
+  display: grid;
+  /* 라벨 열 + 8개 슬롯 */
+  grid-template-columns: 56px repeat(8, 1fr);
+  gap: 2px;
+}
+
+.gridFull {
+  display: none;
+}
+
+.gridHeadCell,
+.gridRowLabel {
+  font-size: 10px;
+  color: var(--gray-400);
+  font-weight: var(--fw-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1) 0;
+}
+
+.gridRowLabel {
+  justify-content: flex-start;
+  padding-left: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cell {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.cellAvailable {
+  background: var(--status-available-tint);
+  color: var(--status-available);
+}
+
+.cellAvoid {
+  background: var(--status-avoid-tint);
+  color: var(--status-avoid);
+}
+
+.cellUnavailable {
+  background: var(--status-unavailable-tint);
+  color: var(--status-unavailable);
+}
+
+.cellSelected {
+  outline: 2px solid var(--toss-gray);
+  outline-offset: -1px;
+}
+
+.cellReason {
+  font-size: var(--fs-caption);
+  color: var(--gray-700);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-chip);
+  padding: var(--space-2) var(--space-3);
+  line-height: 1.5;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ===== 완화 패널 ===== */
+.relaxCard {
+  padding: var(--space-4);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.relaxDesc {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-gray);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.relaxMeta {
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  margin: 0;
+}
+
+.relaxUndoRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ===== 하단 고정 확정 버튼 ===== */
+.bottomBar {
+  position: sticky;
+  bottom: 0;
+  /* .body 의 좌우 패딩(var(--space-4))을 상쇄해 가로 꽉 채움 */
+  margin: 0 calc(-1 * var(--space-4));
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--bg-base);
+  border-top: 1px solid var(--gray-200);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bottomEmpty {
+  font-size: var(--fs-caption);
+  color: var(--status-unavailable);
+  text-align: center;
+  margin: 0;
+}
+
+/* ===== 넓은 화면: 전체 격자 표시 ===== */
+@media (min-width: 768px) {
+  .dayTabs,
+  .gridSingle {
+    display: none;
+  }
+
+  .gridFull {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .gridFullInner {
+    display: grid;
+    grid-template-columns: 64px repeat(40, 28px);
+    gap: 2px;
+    min-width: max-content;
+  }
+
+  .gridFullInner .cell {
+    width: 28px;
+    height: 28px;
+    aspect-ratio: auto;
+  }
+
+  .dayGroupLabel {
+    grid-column: span 8;
+    font-size: 10px;
+    color: var(--gray-400);
+    font-weight: var(--fw-semibold);
+    text-align: center;
+    padding: var(--space-1) 0;
+  }
+}
