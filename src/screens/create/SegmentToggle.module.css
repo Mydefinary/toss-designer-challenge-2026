@@ -1,0 +1,47 @@
+/* 재사용 세그먼트 컨트롤 — 2~N 옵션, 토스풍 알약 컨테이너 + pill */
+.segment {
+  display: inline-flex;
+  width: 100%;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-button);
+}
+
+.option {
+  flex: 1;
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-chip);
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.option:hover:not(.selected) {
+  color: var(--gray-700);
+}
+
+/* 선택 상태 — 흰 칩 + 블루 텍스트 */
+.selected {
+  background: var(--bg-base);
+  color: var(--toss-blue);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--shadow-card);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+/* 컴팩트 변형 — 참석자 행의 필수/선택 토글용 */
+.sm {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-caption);
+}
