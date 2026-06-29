@@ -6,6 +6,11 @@ import {
   scoreAllCandidates,
   suggestRelaxations,
   applyDiversity,
+  businessDayCount,
+  formatBlock,
+  formatRange,
+  VALID_BLOCKS,
+  BLOCKS_PER_DAY,
 } from './recommend';
 import type { Attendee, ConstraintCell, MeetingConfig } from '../types';
 import { scenarios } from '../data/scenarios';
@@ -15,155 +20,185 @@ const s2 = scenarios[1]!;
 const s3 = scenarios[2]!;
 const s4 = scenarios[3]!;
 
-describe('generateSlots', () => {
-  it('1. 40개 슬롯, 점심(12시) 제외, day 0–4 / hour 9–17', () => {
-    const slots = generateSlots(5);
-    expect(slots).toHaveLength(40);
-    // 점심 12시는 없어야 한다
-    expect(slots.some((s) => s.startHour === 12)).toBe(false);
-    // day 범위 0–4
+/** v2 테스트용 설정 (월~금 5영업일, 온라인 기본) */
+function makeConfig(over?: Partial<MeetingConfig>): MeetingConfig {
+  return {
+    title: 't',
+    durationMinutes: 60,
+    dateRange: { start: '2026-06-29', end: '2026-07-03' },
+    location: 'online',
+    rooms: [],
+    ...over,
+  };
+}
+
+describe('generateSlots / 블럭 모델', () => {
+  it('1. 5영업일 × 16블럭 = 80슬롯, 점심(6·7) 제외, blockIndex 유효', () => {
+    const slots = generateSlots(makeConfig());
+    expect(slots).toHaveLength(80);
+    // 점심 블럭 6·7 은 없어야 한다
+    expect(slots.some((s) => s.blockIndex === 6 || s.blockIndex === 7)).toBe(false);
+    // 모든 블럭이 유효집합에 속한다
+    expect(slots.every((s) => VALID_BLOCKS.includes(s.blockIndex))).toBe(true);
+    // day 범위 0–4, 하루 16블럭
     expect(slots.every((s) => s.day >= 0 && s.day <= 4)).toBe(true);
-    // hour 범위 9–17
-    expect(slots.every((s) => s.startHour >= 9 && s.startHour <= 17)).toBe(true);
-    // 하루 8슬롯
-    expect(slots.filter((s) => s.day === 0)).toHaveLength(8);
+    expect(slots.filter((s) => s.day === 0)).toHaveLength(BLOCKS_PER_DAY);
+    // businessDayCount: 월~금 = 5
+    expect(businessDayCount({ start: '2026-06-29', end: '2026-07-03' })).toBe(5);
+    expect(businessDayCount({ start: '2026-07-04', end: '2026-07-05' })).toBe(0); // 주말
+    expect(businessDayCount({ start: 'bad', end: 'date' })).toBe(0);
+  });
+
+  it('2. 블럭/구간 표기 — formatBlock·formatRange', () => {
+    expect(formatBlock({ day: 0, blockIndex: 0 })).toBe('09:00–09:30');
+    expect(formatBlock({ day: 0, blockIndex: 8 })).toBe('13:00–13:30');
+    expect(formatBlock({ day: 0, blockIndex: 17 })).toBe('17:30–18:00');
+    expect(formatRange({ day: 0, blockIndex: 8 }, 60)).toBe('13:00–14:00');
+    expect(formatRange({ day: 0, blockIndex: 0 }, 90)).toBe('09:00–10:30');
   });
 });
 
 describe('시나리오 1 — Hard 제약 (필수자 불가 제외)', () => {
-  it('2. 지훈(필수)의 화요일(day1) 외근 슬롯은 추천에서 제외된다', () => {
+  it('3. 지훈(필수)의 화요일(day1) 외근으로 day1 후보가 전부 제외된다', () => {
     const out = recommend(s1.attendees, s1.constraints, s1.config);
     expect(out.length).toBeGreaterThan(0);
-    // 화요일(day1)은 지훈 종일 외근 → 어떤 슬롯도 후보에 없어야 한다
-    expect(out.every((c) => c.slot.day !== 1)).toBe(true);
-    // 전체 후보집합에서도 day1 은 전부 제외
+    expect(out.every((c) => c.startSlot.day !== 1)).toBe(true);
     const all = scoreAllCandidates(s1.attendees, s1.constraints, s1.config);
-    expect(all.some((c) => c.slot.day === 1)).toBe(false);
+    expect(all.some((c) => c.startSlot.day === 1)).toBe(false);
+    // 60분 후보는 2블럭을 점유
+    expect(all.every((c) => c.blocks === 2)).toBe(true);
   });
 });
 
 describe('시나리오 2 — 완벽한 시간 없음', () => {
-  it('3. 1순위 후보도 양보(yielding)를 동반한다', () => {
+  it('4. 1순위 후보도 양보(yielding)를 동반하고, 전 후보가 yielding>0', () => {
     const out = recommend(s2.attendees, s2.constraints, s2.config);
     expect(out.length).toBeGreaterThan(0);
-    const top = out[0]!;
-    expect(top.yielding.length).toBeGreaterThan(0);
-    // 100% 만족(양보 0) 슬롯이 존재하지 않음을 전체에서 확인
+    expect(out[0]!.yielding.length).toBeGreaterThan(0);
     const all = scoreAllCandidates(s2.attendees, s2.constraints, s2.config);
+    expect(all.length).toBeGreaterThan(0);
     expect(all.every((c) => c.yielding.length > 0)).toBe(true);
   });
 });
 
 describe('시나리오 3 — 후보 희소 + 제약 완화', () => {
-  it('4. 가능 후보가 5개 미만이고, 완화 제안이 1개 이상 나온다', () => {
+  it('5. 가능 후보가 5개 미만(1개)이고 완화 제안이 1개 이상 나온다', () => {
     const all = scoreAllCandidates(s3.attendees, s3.constraints, s3.config);
     expect(all.length).toBeLessThan(5);
-    expect(all.length).toBeGreaterThan(0); // 금요일 13시 1개
+    expect(all.length).toBeGreaterThan(0);
+    // 유일 후보는 금요일(day4) 13:00(block8) 시작
+    expect(all[0]!.startSlot).toEqual({ day: 4, blockIndex: 8 });
     const suggestions = suggestRelaxations(s3.attendees, s3.constraints, s3.config);
     expect(suggestions.length).toBeGreaterThanOrEqual(1);
   });
 });
 
 describe('시나리오 4 — 장소 병목', () => {
-  it('5. 시간은 좋지만 회의실 없는 슬롯은 roomAvailable=false + 패널티(-5)', () => {
+  it('6. 회의실 있는/없는 슬롯이 공존하고 점수차가 정확히 장소 패널티(5)', () => {
     const all = scoreAllCandidates(s4.attendees, s4.constraints, s4.config);
     const withRoom = all.find((c) => c.roomAvailable);
     const withoutRoom = all.find((c) => !c.roomAvailable);
     expect(withRoom).toBeDefined();
     expect(withoutRoom).toBeDefined();
-    // 시간 만족도는 동일(전원 가능)하므로 점수 차이는 정확히 장소 패널티 -5
     expect(withRoom!.score - withoutRoom!.score).toBe(5);
+    // 회의실 있는 후보엔 room 이 부착된다
+    expect(withRoom!.room).toBeDefined();
+  });
+});
+
+describe('가변 회의 길이', () => {
+  it('7. 60분=2블럭 점유, 30분 후보수 > 90분 후보수', () => {
+    const a: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
+    const n30 = scoreAllCandidates(a, [], makeConfig({ durationMinutes: 30 }));
+    const n90 = scoreAllCandidates(a, [], makeConfig({ durationMinutes: 90 }));
+    const c60 = scoreAllCandidates(a, [], makeConfig({ durationMinutes: 60 }));
+    expect(n30.length).toBeGreaterThan(n90.length);
+    expect(n30[0]!.blocks).toBe(1);
+    expect(c60[0]!.blocks).toBe(2);
+    expect(n90[0]!.blocks).toBe(3);
+    // 30분: 5일 × 16블럭 = 80
+    expect(n30.length).toBe(80);
   });
 });
 
 describe('Tie-break', () => {
-  it('6. 동점 슬롯은 이른 시간(필수자 전원 가능)이 상위로 정렬된다', () => {
-    // 전원 가능 + 온라인 → 모든 슬롯 점수 동일 → tie-break(이른 날짜·시간)만 작동
+  it('8. 동점이면 가장 이른 슬롯, 그리고 필수자 가능 슬롯이 필수자 회피 슬롯보다 상위', () => {
     const attendees: Attendee[] = [
       { id: 'R', name: '필수', role: 'required' },
       { id: 'O', name: '선택', role: 'optional' },
     ];
-    const config: MeetingConfig = { title: 't', rangeDays: 5, location: 'online' };
+    const config = makeConfig({ location: 'online' });
     const all = scoreAllCandidates(attendees, [], config);
-    // 모든 슬롯 동점 → 첫 번째는 가장 이른 슬롯 (월 9시)
-    expect(all[0]!.slot).toEqual({ day: 0, startHour: 9 });
+    expect(all[0]!.startSlot).toEqual({ day: 0, blockIndex: 0 });
     const out = recommend(attendees, [], config);
-    expect(out[0]!.slot).toEqual({ day: 0, startHour: 9 });
+    expect(out[0]!.startSlot).toEqual({ day: 0, blockIndex: 0 });
 
-    // 동점·동일 충돌수에서 '필수자 전원 가능' 슬롯이 '필수자 회피' 슬롯보다 상위
+    // 30분 단위로 특정 블럭을 타깃해 검증
+    const c30 = makeConfig({ durationMinutes: 30 });
     const constraints: ConstraintCell[] = [
-      // 슬롯 A(day0 h10): 선택자 회피 1명 → 점수 3 + (-0.5) = 2.5, 필수 전원 가능
-      { attendeeId: 'O', slot: { day: 0, startHour: 10 }, status: 'avoid' },
-      // 슬롯 B(day0 h11): 필수자 회피 1명 → 점수 -1.5 + 1 = -0.5
-      { attendeeId: 'R', slot: { day: 0, startHour: 11 }, status: 'avoid' },
+      { attendeeId: 'O', slot: { day: 0, blockIndex: 2 }, status: 'avoid' }, // 선택 회피 → 3 - 0.5 = 2.5
+      { attendeeId: 'R', slot: { day: 0, blockIndex: 3 }, status: 'avoid' }, // 필수 회피 → -1.5 + 1 = -0.5
     ];
-    const ranked = scoreAllCandidates(attendees, constraints, config);
-    const idxA = ranked.findIndex((c) => slotKey(c.slot) === '0-10');
-    const idxB = ranked.findIndex((c) => slotKey(c.slot) === '0-11');
-    expect(idxA).toBeLessThan(idxB); // 필수 전원 가능(A)이 필수 회피(B)보다 상위
+    const ranked = scoreAllCandidates(attendees, constraints, c30);
+    const idxA = ranked.findIndex((c) => slotKey(c.startSlot) === '0-2');
+    const idxB = ranked.findIndex((c) => slotKey(c.startSlot) === '0-3');
+    expect(idxA).toBeLessThan(idxB);
   });
 });
 
 describe('다양성 규칙', () => {
-  it('7. 추천 결과는 같은 날 최대 2개까지만 포함한다', () => {
-    // 전원 가능 → 40개 동점 후보 → 다양성 규칙이 같은 날 2개로 제한
+  it('9. 추천 결과는 같은 날 최대 2개까지만 포함한다', () => {
     const attendees: Attendee[] = [
       { id: 'R1', name: '필수1', role: 'required' },
       { id: 'R2', name: '필수2', role: 'required' },
     ];
-    const config: MeetingConfig = { title: 't', rangeDays: 5, location: 'online' };
-    const out = recommend(attendees, [], config);
+    const out = recommend(attendees, [], makeConfig({ location: 'online' }));
     expect(out.length).toBe(5);
     const perDay = new Map<number, number>();
-    for (const c of out) perDay.set(c.slot.day, (perDay.get(c.slot.day) ?? 0) + 1);
+    for (const c of out) perDay.set(c.startSlot.day, (perDay.get(c.startSlot.day) ?? 0) + 1);
     for (const count of perDay.values()) expect(count).toBeLessThanOrEqual(2);
 
-    // 시나리오 4(후보 다수)에서도 동일하게 보장
     const s4out = recommend(s4.attendees, s4.constraints, s4.config);
     const s4PerDay = new Map<number, number>();
-    for (const c of s4out) s4PerDay.set(c.slot.day, (s4PerDay.get(c.slot.day) ?? 0) + 1);
+    for (const c of s4out) s4PerDay.set(c.startSlot.day, (s4PerDay.get(c.startSlot.day) ?? 0) + 1);
     for (const count of s4PerDay.values()) expect(count).toBeLessThanOrEqual(2);
   });
 });
 
 describe('점수 모델 — 가중치', () => {
-  it('8. 필수자 회피(-1.5)가 선택자 가능(+1)보다 무겁게 작동한다', () => {
+  it('10. 필수자 회피(-1.5)가 선택자 가능(+1)보다 무겁게 작동한다', () => {
     const attendees: Attendee[] = [
       { id: 'R', name: '필수', role: 'required' },
       { id: 'O', name: '선택', role: 'optional' },
     ];
-    const config: MeetingConfig = { title: 't', rangeDays: 5, location: 'online' };
+    const config = makeConfig({ durationMinutes: 30 });
     const constraints: ConstraintCell[] = [
-      { attendeeId: 'R', slot: { day: 0, startHour: 9 }, status: 'avoid' }, // 필수 회피
-      { attendeeId: 'O', slot: { day: 0, startHour: 10 }, status: 'avoid' }, // 선택 회피
+      { attendeeId: 'R', slot: { day: 0, blockIndex: 0 }, status: 'avoid' }, // 필수 회피
+      { attendeeId: 'O', slot: { day: 0, blockIndex: 1 }, status: 'avoid' }, // 선택 회피
     ];
     const all = scoreAllCandidates(attendees, constraints, config);
-    const byKey = (k: string) => all.find((c) => slotKey(c.slot) === k)!;
+    const byKey = (k: string) => all.find((c) => slotKey(c.startSlot) === k)!;
 
-    const reqAvoid = byKey('0-9'); // R 회피, O 가능 → -1.5 + 1
-    const optAvoid = byKey('0-10'); // R 가능, O 회피 → 3 - 0.5
-    const bothOk = byKey('0-11'); // 전원 가능 → 3 + 1
+    const reqAvoid = byKey('0-0'); // R 회피, O 가능 → -1.5 + 1
+    const optAvoid = byKey('0-1'); // R 가능, O 회피 → 3 - 0.5
+    const bothOk = byKey('0-2'); // 전원 가능 → 3 + 1
 
     expect(bothOk.score).toBe(4);
     expect(optAvoid.score).toBe(2.5);
     expect(reqAvoid.score).toBe(-0.5);
-    // 필수자 회피 패널티(4.5 = 0.5×3+? → 만점 대비 4.5↓)가 선택자 회피 패널티(1.5)보다 큼
     expect(bothOk.score - reqAvoid.score).toBe(4.5);
     expect(bothOk.score - optAvoid.score).toBe(1.5);
-    // 결과적으로 필수자 회피 슬롯이 선택자 회피 슬롯보다 하위
     expect(reqAvoid.score).toBeLessThan(optAvoid.score);
   });
 });
 
 describe('applyDiversity 직접 검증', () => {
-  it('정렬된 동점 후보에서 같은 날 2개 제한이 적용된다', () => {
+  it('11. 정렬된 동점 후보에서 같은 날 2개 제한 + rank 재부여', () => {
     const attendees: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
-    const config: MeetingConfig = { title: 't', rangeDays: 5, location: 'online' };
-    const all = scoreAllCandidates(attendees, [], config);
+    const all = scoreAllCandidates(attendees, [], makeConfig({ location: 'online' }));
     const picked = applyDiversity(all, 5);
-    const day0 = picked.filter((c) => c.slot.day === 0);
+    const day0 = picked.filter((c) => c.startSlot.day === 0);
     expect(day0.length).toBeLessThanOrEqual(2);
-    // rank 는 1..5 로 재부여
     expect(picked.map((c) => c.rank)).toEqual([1, 2, 3, 4, 5]);
   });
 });
