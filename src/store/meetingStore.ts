@@ -9,11 +9,13 @@ import type {
   Attendee,
   AttendeeRole,
   ConstraintCell,
+  DurationMinutes,
   MeetingConfig,
   RankedCandidate,
   RelaxationSuggestion,
+  Room,
 } from '../types';
-import { recommend, suggestRelaxations, formatSlot } from '../lib/recommend';
+import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey } from '../lib/recommend';
 import { scenarios, defaultScenario, type Scenario } from '../data/scenarios';
 
 // ===== 헬퍼 타입 =====
@@ -55,6 +57,11 @@ function deriveRelaxations(
   return suggestRelaxations(attendees, constraints, config);
 }
 
+/** 후보 1순위 표기 — "월요일 13:00–14:00" */
+function topLabel(candidate: RankedCandidate, config: MeetingConfig): string {
+  return formatRange(candidate.startSlot, config.durationMinutes);
+}
+
 /** 시나리오로부터 초기/재설정 상태 조각을 생성 (깊은 복사) */
 function buildScenarioState(scenario: Scenario): Pick<
   MeetingState,
@@ -66,6 +73,7 @@ function buildScenarioState(scenario: Scenario): Pick<
   | 'relaxations'
   | 'confirmedRanking'
   | 'currentRankIndex'
+  | 'finalChoice'
   | 'issueLog'
   | 'appliedRelaxations'
 > {
@@ -81,14 +89,15 @@ function buildScenarioState(scenario: Scenario): Pick<
     relaxations: deriveRelaxations(attendees, constraints, config),
     confirmedRanking: null,
     currentRankIndex: 0,
+    finalChoice: 0,
     issueLog: [],
     appliedRelaxations: [],
   };
 }
 
-/** 동일 슬롯 셀 판정 — (attendeeId, day, startHour) */
-function sameCell(a: ConstraintCell, attendeeId: string, day: number, startHour: number): boolean {
-  return a.attendeeId === attendeeId && a.slot.day === day && a.slot.startHour === startHour;
+/** 동일 슬롯 셀 판정 — (attendeeId, day, blockIndex) */
+function sameCell(a: ConstraintCell, attendeeId: string, day: number, blockIndex: number): boolean {
+  return a.attendeeId === attendeeId && a.slot.day === day && a.slot.blockIndex === blockIndex;
 }
 
 /**
@@ -116,7 +125,7 @@ function applyOneRelaxation(
       const nextConstraints =
         target?.attendeeId && target.slot
           ? constraints.filter(
-              (c) => !sameCell(c, target.attendeeId!, target.slot!.day, target.slot!.startHour),
+              (c) => !sameCell(c, target.attendeeId!, target.slot!.day, target.slot!.blockIndex),
             )
           : constraints;
       return { attendees, constraints: nextConstraints, config };
@@ -150,6 +159,8 @@ export interface MeetingState {
   confirmedRanking: RankedCandidate[] | null;
   /** 확정 랭킹 내 현재 순위 인덱스 (0-based) */
   currentRankIndex: number;
+  /** 확정 랭킹 내 최종 선택 인덱스 (0-based). currentRankIndex 와 동기 유지 */
+  finalChoice: number;
   /** 이슈/운영 로그 */
   issueLog: IssueLogEntry[];
   /** 완화 undo 스택 (가장 최근이 마지막) */
@@ -160,6 +171,14 @@ export interface MeetingState {
   loadScenario: (id: string) => void;
   /** 설정 부분 변경 후 재계산 */
   setConfig: (patch: Partial<MeetingConfig>) => void;
+  /** 회의 길이 변경 후 재계산 */
+  setDuration: (min: DurationMinutes) => void;
+  /** 후보 기간 변경 후 재계산 */
+  setDateRange: (start: string, end: string) => void;
+  /** 회의실 추가(모든 유효블럭 가용) 후 재계산 */
+  addRoom: (name: string) => void;
+  /** 회의실 제거 후 재계산 */
+  removeRoom: (id: string) => void;
   /** 참석자 역할 변경 후 재계산 */
   setAttendeeRole: (id: string, role: AttendeeRole) => void;
   /** 제약 셀 추가/교체(available 이면 제거) 후 재계산 */
@@ -170,6 +189,8 @@ export interface MeetingState {
   confirm: () => void;
   /** 확정 랭킹에서 다음 순위로 이동 */
   moveToNextRank: () => void;
+  /** 확정 랭킹 내 최종 선택을 직접 지정 (0-based) */
+  setFinalChoice: (rankIndex: number) => void;
   /** 완화 적용(스냅샷 push 후 상태 변경, combinedWith 포함) */
   applyRelaxation: (suggestion: RelaxationSuggestion) => void;
   /** 직전 완화 되돌림(스냅샷 복원) */
@@ -198,6 +219,51 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
     });
   },
 
+  setDuration: (min) => {
+    const config = { ...get().config, durationMinutes: min };
+    const { attendees, constraints } = get();
+    set({
+      config,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  setDateRange: (start, end) => {
+    const config: MeetingConfig = { ...get().config, dateRange: { start, end } };
+    const { attendees, constraints } = get();
+    set({
+      config,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  addRoom: (name) => {
+    const current = get().config;
+    // 새 회의실은 모든 유효블럭이 가용한 상태로 추가
+    const available = generateSlots(current).map((s) => slotKey(s));
+    const room: Room = { id: `room-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, name, available };
+    const config: MeetingConfig = { ...current, rooms: [...current.rooms, room] };
+    const { attendees, constraints } = get();
+    set({
+      config,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  removeRoom: (id) => {
+    const current = get().config;
+    const config: MeetingConfig = { ...current, rooms: current.rooms.filter((r) => r.id !== id) };
+    const { attendees, constraints } = get();
+    set({
+      config,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
   setAttendeeRole: (id, role) => {
     const attendees = get().attendees.map((a) => (a.id === id ? { ...a, role } : a));
     const { constraints, config } = get();
@@ -209,10 +275,8 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
   },
 
   setConstraint: (cell) => {
-    const { day, startHour } = cell.slot;
-    const without = get().constraints.filter(
-      (c) => !sameCell(c, cell.attendeeId, day, startHour),
-    );
+    const { day, blockIndex } = cell.slot;
+    const without = get().constraints.filter((c) => !sameCell(c, cell.attendeeId, day, blockIndex));
     // available 은 저장하지 않는 시드 관례 — 제거만 하고 추가하지 않음
     const constraints =
       cell.status === 'available' ? without : [...without, structuredClone(cell)];
@@ -233,20 +297,21 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
   },
 
   confirm: () => {
-    const { candidates, issueLog } = get();
+    const { candidates, issueLog, config } = get();
     const confirmedRanking = structuredClone(candidates);
     const description =
-      candidates.length === 0 ? '확정할 후보 없음' : `${formatSlot(candidates[0]!.slot)} 확정`;
+      candidates.length === 0 ? '확정할 후보 없음' : `${topLabel(candidates[0]!, config)} 확정`;
     const entry: IssueLogEntry = { at: Date.now(), kind: 'confirm', description };
     set({
       confirmedRanking,
       currentRankIndex: 0,
+      finalChoice: 0,
       issueLog: [...issueLog, entry],
     });
   },
 
   moveToNextRank: () => {
-    const { confirmedRanking, currentRankIndex, issueLog } = get();
+    const { confirmedRanking, currentRankIndex, issueLog, config } = get();
     if (!confirmedRanking) return;
     const newIndex = currentRankIndex + 1;
     if (newIndex >= confirmedRanking.length) return; // 더 이상 다음 순위 없음
@@ -257,9 +322,29 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       kind: 'rank-move',
       fromRank,
       toRank,
-      description: `${fromRank}순위 → ${toRank}순위 이동: ${formatSlot(confirmedRanking[newIndex]!.slot)}`,
+      description: `${fromRank}순위 → ${toRank}순위 이동: ${topLabel(confirmedRanking[newIndex]!, config)}`,
     };
-    set({ currentRankIndex: newIndex, issueLog: [...issueLog, entry] });
+    set({ currentRankIndex: newIndex, finalChoice: newIndex, issueLog: [...issueLog, entry] });
+  },
+
+  setFinalChoice: (rankIndex) => {
+    const { confirmedRanking, currentRankIndex, issueLog, config } = get();
+    if (!confirmedRanking) return;
+    if (rankIndex < 0 || rankIndex >= confirmedRanking.length) return; // 범위 밖이면 no-op
+    if (rankIndex === currentRankIndex) {
+      set({ finalChoice: rankIndex });
+      return;
+    }
+    const fromRank = currentRankIndex + 1;
+    const toRank = rankIndex + 1;
+    const entry: IssueLogEntry = {
+      at: Date.now(),
+      kind: 'rank-move',
+      fromRank,
+      toRank,
+      description: `${fromRank}순위 → ${toRank}순위 선택: ${topLabel(confirmedRanking[rankIndex]!, config)}`,
+    };
+    set({ finalChoice: rankIndex, currentRankIndex: rankIndex, issueLog: [...issueLog, entry] });
   },
 
   applyRelaxation: (suggestion) => {
@@ -336,6 +421,10 @@ export const useTopCandidate = (): RankedCandidate | undefined =>
 export const useCurrentCandidate = (): RankedCandidate | undefined =>
   useMeetingStore((s) => s.confirmedRanking?.[s.currentRankIndex] ?? s.candidates[0]);
 
+/** 확정 랭킹 내 최종 선택 후보 */
+export const useFinalChoice = (): RankedCandidate | undefined =>
+  useMeetingStore((s) => s.confirmedRanking?.[s.finalChoice]);
+
 /** 회의 설정 */
 export const useConfig = (): MeetingConfig => useMeetingStore((s) => s.config);
 
@@ -361,11 +450,16 @@ export const useScenarioMeta = (): { id: string; name: string; purpose: string }
 export const useMeetingActions = (): {
   loadScenario: MeetingState['loadScenario'];
   setConfig: MeetingState['setConfig'];
+  setDuration: MeetingState['setDuration'];
+  setDateRange: MeetingState['setDateRange'];
+  addRoom: MeetingState['addRoom'];
+  removeRoom: MeetingState['removeRoom'];
   setAttendeeRole: MeetingState['setAttendeeRole'];
   setConstraint: MeetingState['setConstraint'];
   recompute: MeetingState['recompute'];
   confirm: MeetingState['confirm'];
   moveToNextRank: MeetingState['moveToNextRank'];
+  setFinalChoice: MeetingState['setFinalChoice'];
   applyRelaxation: MeetingState['applyRelaxation'];
   undoRelaxation: MeetingState['undoRelaxation'];
 } =>
@@ -373,11 +467,16 @@ export const useMeetingActions = (): {
     useShallow((s) => ({
       loadScenario: s.loadScenario,
       setConfig: s.setConfig,
+      setDuration: s.setDuration,
+      setDateRange: s.setDateRange,
+      addRoom: s.addRoom,
+      removeRoom: s.removeRoom,
       setAttendeeRole: s.setAttendeeRole,
       setConstraint: s.setConstraint,
       recompute: s.recompute,
       confirm: s.confirm,
       moveToNextRank: s.moveToNextRank,
+      setFinalChoice: s.setFinalChoice,
       applyRelaxation: s.applyRelaxation,
       undoRelaxation: s.undoRelaxation,
     })),
