@@ -1,12 +1,14 @@
-/** 화면 1 — 회의 생성. 제목·고정정보·장소·참석자 입력 후 제약 화면으로 이동. */
+/** 화면 1 — 회의 생성. 제목·회의 길이·후보 기간·장소·참석자 입력 후 제약 화면으로 이동. */
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfig, useAttendees, useMeetingActions } from '../store';
 import { Button, Card, Badge } from '../components/ui';
 import type { MeetingLocation } from '../types';
-import { businessDayCount } from '../lib/recommend';
 import { SegmentToggle, type SegmentOption } from './create/SegmentToggle';
 import { AttendeeRow } from './create/AttendeeRow';
+import { DurationPicker } from './create/DurationPicker';
+import { DateRangeCalendar } from './create/DateRangeCalendar';
+import { RoomList } from './create/RoomList';
 import styles from './create/CreateScreen.module.css';
 
 const LOCATION_OPTIONS: SegmentOption<MeetingLocation>[] = [
@@ -14,18 +16,11 @@ const LOCATION_OPTIONS: SegmentOption<MeetingLocation>[] = [
   { value: 'online', label: '온라인' },
 ];
 
-/** 분 단위 회의 길이 → 한국어 표기 (30→"30분", 90→"1시간 30분") */
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}분`;
-  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
-}
-
 export default function CreateScreen() {
   const config = useConfig();
   const attendees = useAttendees();
-  const { setConfig, setAttendeeRole } = useMeetingActions();
+  const { setConfig, setDuration, setDateRange, addRoom, removeRoom, setAttendeeRole } =
+    useMeetingActions();
   const navigate = useNavigate();
 
   // 필수/선택 인원 요약 — 참석자 변경 시에만 재계산
@@ -35,7 +30,7 @@ export default function CreateScreen() {
     return { requiredCount: required, optionalCount: attendees.length - required };
   }, [attendees]);
 
-  const roomCount = config.rooms?.length ?? 0;
+  const rooms = config.rooms ?? [];
 
   return (
     <>
@@ -59,26 +54,19 @@ export default function CreateScreen() {
         />
       </Card>
 
-      {/* 2·3. 편집 불가 고정 정보 — 회의 길이 / 후보 기간 */}
+      {/* 2. 회의 길이 */}
       <Card className={styles.section}>
-        <div className={styles.fixedRow}>
-          <div className={styles.fixedText}>
-            <span className={styles.fixedLabel}>회의 길이</span>
-            <span className={styles.fixedValue}>{formatDuration(config.durationMinutes)}</span>
-          </div>
-          <Badge tone="neutral">{formatDuration(config.durationMinutes)} · 30분 블럭</Badge>
-        </div>
-        <div className={styles.divider} />
-        <div className={styles.fixedRow}>
-          <div className={styles.fixedText}>
-            <span className={styles.fixedLabel}>후보 기간</span>
-            <span className={styles.fixedValue}>다음 주 · 영업일 월~금</span>
-          </div>
-          <Badge tone="neutral">{businessDayCount(config.dateRange)}일 고정</Badge>
-        </div>
+        <span className={styles.sectionTitle}>회의 길이</span>
+        <DurationPicker value={config.durationMinutes} onChange={setDuration} />
       </Card>
 
-      {/* 4. 온라인/오프라인 토글 */}
+      {/* 3. 후보 기간 — 월 달력에서 범위 선택 */}
+      <Card className={styles.section}>
+        <span className={styles.sectionTitle}>후보 기간</span>
+        <DateRangeCalendar dateRange={config.dateRange} onChange={setDateRange} />
+      </Card>
+
+      {/* 4. 온라인/오프라인 토글 + 오프라인이면 회의실 목록 */}
       <Card className={styles.section}>
         <span className={styles.sectionTitle}>회의 장소</span>
         <SegmentToggle
@@ -87,13 +75,11 @@ export default function CreateScreen() {
           value={config.location}
           onChange={(location: MeetingLocation) => setConfig({ location })}
         />
-        <p className={styles.hint}>
-          {config.location === 'offline'
-            ? roomCount > 0
-              ? `회의실 ${roomCount}곳 가용`
-              : '지정 회의실 없음'
-            : '장소 무관 · 링크로 진행'}
-        </p>
+        {config.location === 'offline' ? (
+          <RoomList rooms={rooms} onAdd={addRoom} onRemove={removeRoom} />
+        ) : (
+          <p className={styles.hint}>장소 무관 · 링크로 진행</p>
+        )}
       </Card>
 
       {/* 5. 참석자 6명 — 필수/선택 토글 */}

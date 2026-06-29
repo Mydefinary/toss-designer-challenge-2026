@@ -1,0 +1,139 @@
+/* 후보 기간 선택 달력 */
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* 월 이동 헤더 */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-button);
+  background: var(--bg-secondary);
+  color: var(--gray-700);
+  font-size: var(--fs-title);
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.navBtn:hover {
+  background: var(--gray-100);
+}
+
+.navBtn:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+.navLabel {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-gray);
+}
+
+/* 요일 헤더 */
+.weekRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.weekday {
+  text-align: center;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--gray-500);
+  padding: var(--space-1) 0;
+}
+
+.weekendLabel {
+  color: var(--gray-300);
+}
+
+/* 날짜 그리드 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.blank {
+  aspect-ratio: 1 / 1;
+}
+
+.day {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-chip);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.day:hover:not(:disabled) {
+  background: var(--bg-secondary);
+}
+
+.day:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: -2px;
+}
+
+/* 주말 — 흐리게 + 비활성 */
+.weekend {
+  color: var(--gray-300);
+  cursor: default;
+}
+
+/* 범위 내 중간 날짜 — 옅은 파란 배경 */
+.inRange {
+  color: var(--toss-blue);
+}
+
+.between {
+  background: var(--toss-blue-tint);
+  border-radius: 0;
+}
+
+/* 시작·종료 날짜 — 진한 파란 배경 */
+.edge {
+  background: var(--toss-blue);
+  color: var(--bg-base);
+  font-weight: var(--fw-bold);
+}
+
+.edge:hover:not(:disabled) {
+  background: var(--toss-blue);
+}
+
+/* 영업일 요약 */
+.summary {
+  margin: var(--space-1) 0 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.summary strong {
+  color: var(--toss-blue);
+  font-weight: var(--fw-semibold);
+}

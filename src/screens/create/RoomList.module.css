@@ -1,0 +1,116 @@
+/* 오프라인 회의실 목록 */
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 입력 + 추가 버튼 행 */
+.inputRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-button);
+  background: var(--bg-base);
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--toss-gray);
+  transition: border-color 0.15s ease;
+}
+
+.input::placeholder {
+  color: var(--gray-300);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--toss-blue);
+}
+
+.addBtn {
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--radius-button);
+  background: var(--toss-blue-tint);
+  color: var(--toss-blue);
+  padding: var(--space-2) var(--space-4);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.addBtn:hover {
+  background: var(--gray-100);
+}
+
+.addBtn:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+/* 회의실 항목 목록 */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-button);
+  padding: var(--space-2) var(--space-3);
+}
+
+.name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-medium);
+  color: var(--gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.removeBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--gray-400);
+  font-size: var(--fs-caption);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.removeBtn:hover {
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+
+.removeBtn:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}

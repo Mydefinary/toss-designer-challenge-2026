@@ -1,0 +1,39 @@
+/* 회의 길이 선택 — 2x2 그리드 칩 버튼 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.option {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-3) var(--space-2);
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-button);
+  background: var(--bg-base);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-700);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.option:hover {
+  border-color: var(--gray-300);
+}
+
+.option:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+.selected {
+  border-color: var(--toss-blue);
+  background: var(--toss-blue-tint);
+  color: var(--toss-blue);
+}
