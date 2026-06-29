@@ -1,43 +1,45 @@
 /**
  * 화면 5 — 운영·이슈 대응 (부록A 시나리오5 "이슈 대응" 맥락).
- * 확정된 1~5순위 백업을 바탕으로, 참석자 이슈 발생 시 다음 순위로 한 번에 전환하고
- * 변경 이력을 타임라인으로 남긴다. (오케스트레이션 only — 표시·상호작용은 operate/ 서브컴포넌트)
+ * 확정된 1~5순위를 전부 카드로 나열하고, 그중 하나를 라디오로 최종 선택한다.
+ * 이슈가 생기면 다른 순위를 다시 최종으로 선택해 즉시 전환한다(재조율/완화 없음).
+ * (오케스트레이션 only — 표시·상호작용은 operate/ 서브컴포넌트)
  */
 import { useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useConfig,
   useScenarioMeta,
   useIssueLog,
+  useFinalChoice,
   useMeetingActions,
   useMeetingStore,
 } from '../store';
-import { formatRange } from '../lib/recommend';
+import { formatRange, dayName } from '../lib/recommend';
 import type { MeetingConfig, RankedCandidate } from '../types';
 import { Button, Card } from '../components/ui';
-import { CurrentMeetingCard } from './operate/CurrentMeetingCard';
-import { RankProgress } from './operate/RankProgress';
+import { RankCard } from './operate/RankCard';
 import { HistoryTimeline } from './operate/HistoryTimeline';
 import styles from './operate/OperateScreen.module.css';
 
-/** 재공유용 요약 텍스트 생성 */
+/** 재공유용 요약 텍스트 생성 — 최종 선택 후보 기준 */
 function buildSummary(
   config: MeetingConfig,
-  current: RankedCandidate,
-  currentIndex: number,
+  final: RankedCandidate,
+  finalIndex: number,
 ): string {
   const locationText =
     config.location === 'online'
       ? '온라인'
-      : `오프라인(${current.roomAvailable ? '회의실 가능' : '회의실 없음'})`;
-  const satisfied = current.satisfied.map((a) => a.name).join(', ') || '없음';
+      : `오프라인(${final.roomAvailable ? '회의실 가능' : '회의실 없음'})`;
+  const satisfied = final.satisfied.map((a) => a.name).join(', ') || '없음';
   const yielding =
-    current.yielding.map((y) => `${y.attendee.name}(${y.reason})`).join(', ') || '없음';
-  const absent = current.absent.map((a) => a.name).join(', ') || '없음';
+    final.yielding.map((y) => `${y.attendee.name}(${y.reason})`).join(', ') || '없음';
+  const absent = final.absent.map((a) => a.name).join(', ') || '없음';
 
   return [
     `[MEETSYNC] ${config.title}`,
-    `확정 시간: ${formatRange(current.startSlot, config.durationMinutes)} (현재 ${currentIndex + 1}순위)`,
+    `최종 시간: ${dayName(final.startSlot.day)} ${formatRange(final.startSlot, config.durationMinutes)} (${finalIndex + 1}순위)`,
     `장소: ${locationText}`,
     `참석: ${satisfied}`,
     `양보: ${yielding} / 불참: ${absent}`,
@@ -75,10 +77,12 @@ export default function OperateScreen() {
   const config = useConfig();
   const meta = useScenarioMeta();
   const issueLog = useIssueLog();
-  const { moveToNextRank } = useMeetingActions();
+  const finalCandidate = useFinalChoice();
+  const { setFinalChoice } = useMeetingActions();
   const confirmedRanking = useMeetingStore((s) => s.confirmedRanking);
-  const currentRankIndex = useMeetingStore((s) => s.currentRankIndex);
+  const finalChoice = useMeetingStore((s) => s.finalChoice);
 
+  const listRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -95,7 +99,8 @@ export default function OperateScreen() {
         <span className={styles.bannerName}>{meta.name}</span>
       </div>
       <p className={styles.bannerGuide}>
-        확정된 순위 백업으로 참석자 이슈에 즉시 대응합니다 — 재조율 없이 다음 순위로 전환하세요.
+        확정된 1~5순위 중 하나를 최종으로 선택하세요. 이슈가 생기면 다른 순위를 다시 선택해
+        즉시 전환합니다(재조율 없음).
       </p>
     </div>
   );
@@ -129,10 +134,11 @@ export default function OperateScreen() {
 
   // ===== (B) 확정 =====
   const total = confirmedRanking.length;
-  const current = confirmedRanking[currentRankIndex];
+  // 최종 후보 — 훅 우선, 없으면 finalChoice 인덱스로 폴백
+  const final = finalCandidate ?? confirmedRanking[finalChoice];
 
-  // 확정됐지만 현재 후보를 찾을 수 없는 경우 (빈 랭킹 / 인덱스 이탈) 안전 메시지
-  if (!current) {
+  // 확정됐지만 표시할 후보가 없는 경우(빈 랭킹 / 인덱스 이탈) 안전 메시지
+  if (total === 0 || !final) {
     return (
       <div className={styles.container}>
         {banner}
@@ -156,10 +162,41 @@ export default function OperateScreen() {
     );
   }
 
-  const hasNextRank = currentRankIndex + 1 < total;
+  /** 해당 인덱스 카드로 키보드 포커스 이동(roving tabindex) */
+  const focusCard = (index: number) => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-rank-index="${index}"]`);
+    el?.focus();
+  };
+
+  /** radiogroup 키보드 탐색 — 이동=선택(setFinalChoice) */
+  const handleListKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    let next: number | null = null;
+    switch (e.key) {
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        next = finalChoice - 1;
+        break;
+      case 'ArrowDown':
+      case 'ArrowRight':
+        next = finalChoice + 1;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = total - 1;
+        break;
+      default:
+        return;
+    }
+    e.preventDefault();
+    const clamped = Math.max(0, Math.min(total - 1, next));
+    if (clamped !== finalChoice) setFinalChoice(clamped);
+    focusCard(clamped);
+  };
 
   const handleReshare = async () => {
-    const ok = await copyText(buildSummary(config, current, currentRankIndex));
+    const ok = await copyText(buildSummary(config, final, finalChoice));
     if (!ok) return;
     setCopied(true);
     if (copyTimer.current) clearTimeout(copyTimer.current);
@@ -170,53 +207,42 @@ export default function OperateScreen() {
     <div className={styles.container}>
       {banner}
 
-      {/* 1. 현재 순위 카드 — 순위 전환 시 key 로 페이드/슬라이드 인 */}
-      <div key={currentRankIndex} className={styles.promote}>
-        <CurrentMeetingCard
-          config={config}
-          current={current}
-          currentIndex={currentRankIndex}
-          total={total}
-        />
+      {/* 1. 확정된 1~5순위 — 라디오 그룹으로 최종 선택 */}
+      <div
+        ref={listRef}
+        className={styles.rankList}
+        role="radiogroup"
+        aria-label="확정된 회의 순위 — 최종 선택"
+        onKeyDown={handleListKeyDown}
+      >
+        {confirmedRanking.map((candidate, index) => (
+          <RankCard
+            key={index}
+            config={config}
+            candidate={candidate}
+            index={index}
+            selected={index === finalChoice}
+            onSelect={setFinalChoice}
+          />
+        ))}
       </div>
 
-      {/* 2. 순위 진행 인디케이터 */}
-      <RankProgress total={total} currentIndex={currentRankIndex} />
+      <p className={styles.helper}>
+        이슈가 생기면 완화 없이 다른 순위를 다시 선택해 즉시 전환합니다.
+      </p>
 
-      {/* 3·4. 핵심 액션 + 재공유 */}
+      {/* 2. 최종 선택 재공유 */}
       <div className={styles.actions}>
-        <Button
-          variant="primary"
-          size="lg"
-          fullWidth
-          disabled={!hasNextRank}
-          aria-disabled={!hasNextRank}
-          aria-describedby={!hasNextRank ? 'no-next-notice' : undefined}
-          onClick={moveToNextRank}
-        >
-          참석자 이슈 발생 → 다음 순위로 이동
-        </Button>
-
-        {hasNextRank ? (
-          <p className={styles.helper}>
-            다음 순위에는 다른 사람이 양보합니다 (재조율 없이 한 번에 전환).
-          </p>
-        ) : (
-          <p id="no-next-notice" className={styles.notice} role="status">
-            더 이상 대안 순위가 없습니다 — 재조율이 필요합니다.
-          </p>
-        )}
-
         <Button variant="secondary" fullWidth onClick={handleReshare} aria-live="polite">
           {copied ? (
             <span className={styles.copied}>복사됨 ✓</span>
           ) : (
-            '현재 순위 재공유 (요약 복사)'
+            '최종 선택 재공유 (요약 복사)'
           )}
         </Button>
       </div>
 
-      {/* 5. 변경 이력 타임라인 */}
+      {/* 3. 변경 이력 타임라인 */}
       <section className={styles.section} aria-label="변경 이력">
         <h3 className={styles.sectionTitle}>변경 이력</h3>
         <HistoryTimeline log={issueLog} />

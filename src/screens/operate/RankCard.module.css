@@ -1,0 +1,111 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+}
+
+/* 키보드 포커스 링 — :focus-visible 로 키보드 탐색 시에만 노출 */
+.card:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px var(--toss-blue);
+}
+
+/* 최종 선택 카드 — emphasized + 추가 outline 링 강조 */
+.selected {
+  box-shadow: inset 0 0 0 2px var(--toss-blue);
+}
+
+.selected:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--toss-blue), 0 0 0 2px var(--bg-base),
+    0 0 0 4px var(--toss-blue);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.rankBadge {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--toss-blue);
+}
+
+.timeRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.time {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--gray-700);
+  line-height: 1.25;
+}
+
+.score {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.locationRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.metaLabel {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-400);
+}
+
+.presentRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.presentCount {
+  font-size: var(--fs-body);
+  color: var(--gray-500);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.emptyInline {
+  font-size: var(--fs-body);
+  color: var(--gray-400);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}
