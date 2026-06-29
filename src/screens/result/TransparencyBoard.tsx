@@ -1,13 +1,13 @@
 /**
  * (a) 투명성 보드 — 참석자×시간 히트맵. 색 + 아이콘(●▲✕)으로 색맹 대비.
- * 모바일: 요일 탭으로 하루씩(6×8). 768px↑: 전체 격자(6×40, 가로 스크롤).
+ * 모바일: 요일 탭으로 하루씩(N×16블럭). 768px↑: 전체 격자(5일×16블럭=80, 가로 스크롤).
  * 기본 접힘 — "모두의 상황 보기" 토글로 펼친다.
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Availability, ConstraintCell } from '../../types';
 import { useAttendees, useConstraints } from '../../store';
-import { dayName, formatSlot, blockStartLabel, VALID_BLOCKS } from '../../lib/recommend';
+import { dayName, formatBlock, blockStartLabel, VALID_BLOCKS } from '../../lib/recommend';
 import { STATUS_ICON } from './constants';
 import styles from './result.module.css';
 
@@ -19,7 +19,7 @@ const DAYS = [0, 1, 2, 3, 4];
 interface SelectedCell {
   attendeeId: string;
   day: number;
-  block: number;
+  blockIndex: number;
 }
 
 const STATUS_CELL_CLASS: Record<Availability, string | undefined> = {
@@ -35,6 +35,11 @@ function reasonOf(cell: ConstraintCell | undefined, status: Availability): strin
   return cell?.reason || cell?.reasonText || '불가';
 }
 
+/** 헤더 라벨 — 16블럭은 좁아 정각(짝수 blockIndex)만 시작시각 노출, 홀수는 빈칸 */
+function headLabel(blockIndex: number): string {
+  return blockIndex % 2 === 0 ? blockStartLabel(blockIndex) : '';
+}
+
 export default function TransparencyBoard() {
   const attendees = useAttendees();
   const constraints = useConstraints();
@@ -43,26 +48,33 @@ export default function TransparencyBoard() {
   const [selectedDay, setSelectedDay] = useState(0);
   const [selected, setSelected] = useState<SelectedCell | null>(null);
 
-  const cellOf = (attendeeId: string, day: number, block: number) =>
+  const cellOf = (attendeeId: string, day: number, blockIndex: number) =>
     constraints.find(
-      (c) => c.attendeeId === attendeeId && c.slot.day === day && c.slot.blockIndex === block,
+      (c) => c.attendeeId === attendeeId && c.slot.day === day && c.slot.blockIndex === blockIndex,
     );
 
   /** 단일 셀 버튼 렌더 */
-  const renderCell = (attendeeId: string, name: string, day: number, block: number): ReactNode => {
-    const cell = cellOf(attendeeId, day, block);
+  const renderCell = (
+    attendeeId: string,
+    name: string,
+    day: number,
+    blockIndex: number,
+  ): ReactNode => {
+    const cell = cellOf(attendeeId, day, blockIndex);
     const status: Availability = cell?.status ?? 'available';
     const reason = reasonOf(cell, status);
     const isSel =
-      selected?.attendeeId === attendeeId && selected.day === day && selected.block === block;
+      selected?.attendeeId === attendeeId &&
+      selected.day === day &&
+      selected.blockIndex === blockIndex;
     return (
       <button
-        key={`${attendeeId}-${day}-${block}`}
+        key={`${attendeeId}-${day}-${blockIndex}`}
         type="button"
         className={cx(styles.cell, STATUS_CELL_CLASS[status], isSel && styles.cellSelected)}
-        title={`${name} · ${formatSlot({ day, blockIndex: block })} — ${reason}`}
-        aria-label={`${name} ${formatSlot({ day, blockIndex: block })} ${reason}`}
-        onClick={() => setSelected({ attendeeId, day, block })}
+        title={`${name} · ${formatBlock({ day, blockIndex })} — ${reason}`}
+        aria-label={`${name} ${formatBlock({ day, blockIndex })} ${reason}`}
+        onClick={() => setSelected({ attendeeId, day, blockIndex })}
       >
         {STATUS_ICON[status]}
       </button>
@@ -84,7 +96,7 @@ export default function TransparencyBoard() {
   }
 
   // ===== 전체 격자(데스크탑) 컬럼 목록 =====
-  const allCols = DAYS.flatMap((d) => VALID_BLOCKS.map((b) => ({ day: d, block: b })));
+  const allCols = DAYS.flatMap((d) => VALID_BLOCKS.map((b) => ({ day: d, blockIndex: b })));
 
   return (
     <div className={styles.board}>
@@ -123,7 +135,7 @@ export default function TransparencyBoard() {
         <span className={styles.gridRowLabel}>{dayName(selectedDay)}</span>
         {VALID_BLOCKS.map((b) => (
           <span key={`h-${b}`} className={styles.gridHeadCell}>
-            {blockStartLabel(b)}
+            {headLabel(b)}
           </span>
         ))}
         {attendees.map((a) => (
@@ -147,8 +159,8 @@ export default function TransparencyBoard() {
           ))}
           <span className={styles.gridRowLabel} />
           {allCols.map((col) => (
-            <span key={`fh-${col.day}-${col.block}`} className={styles.gridHeadCell}>
-              {blockStartLabel(col.block)}
+            <span key={`fh-${col.day}-${col.blockIndex}`} className={styles.gridHeadCell}>
+              {headLabel(col.blockIndex)}
             </span>
           ))}
           {attendees.map((a) => (
@@ -156,7 +168,7 @@ export default function TransparencyBoard() {
               <span className={styles.gridRowLabel} title={a.name}>
                 {a.name}
               </span>
-              {allCols.map((col) => renderCell(a.id, a.name, col.day, col.block))}
+              {allCols.map((col) => renderCell(a.id, a.name, col.day, col.blockIndex))}
             </Row>
           ))}
         </div>
@@ -166,11 +178,11 @@ export default function TransparencyBoard() {
         <p className={styles.cellReason} role="status">
           {(() => {
             const a = attendees.find((x) => x.id === selected.attendeeId);
-            const cell = cellOf(selected.attendeeId, selected.day, selected.block);
+            const cell = cellOf(selected.attendeeId, selected.day, selected.blockIndex);
             const status: Availability = cell?.status ?? 'available';
-            return `${a?.name ?? ''} · ${formatSlot({
+            return `${a?.name ?? ''} · ${formatBlock({
               day: selected.day,
-              blockIndex: selected.block,
+              blockIndex: selected.blockIndex,
             })} — ${reasonOf(cell, status)}`;
           })()}
         </p>

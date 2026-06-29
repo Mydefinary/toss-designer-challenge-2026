@@ -4,7 +4,7 @@
  */
 import type { MeetingLocation, RankedCandidate } from '../../types';
 import { Badge, AvatarStack, Card, Chip } from '../../components/ui';
-import { formatSlot } from '../../lib/recommend';
+import { formatRange } from '../../lib/recommend';
 import SlotDrilldown from './SlotDrilldown';
 import styles from './result.module.css';
 
@@ -15,6 +15,8 @@ interface RankCardProps {
   candidate: RankedCandidate;
   selected: boolean;
   location: MeetingLocation;
+  /** 회의 길이(분) — 시간 표기를 점유 구간으로 렌더하기 위함 */
+  durationMinutes: number;
   onToggle: () => void;
 }
 
@@ -22,6 +24,7 @@ export default function RankCard({
   candidate,
   selected,
   location,
+  durationMinutes,
   onToggle,
 }: RankCardProps) {
   const isTop = candidate.rank === 1;
@@ -56,7 +59,7 @@ export default function RankCard({
         </div>
 
         <p className={cx(styles.slotTime, isTop && styles.slotTimeTop)}>
-          {formatSlot(candidate.startSlot)}
+          {formatRange(candidate.startSlot, durationMinutes)}
         </p>
 
         {candidate.satisfied.length > 0 && (

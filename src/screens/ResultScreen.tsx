@@ -42,6 +42,7 @@ export default function ResultScreen() {
                 key={c.rank}
                 candidate={c}
                 location={config.location}
+                durationMinutes={config.durationMinutes}
                 selected={selectedRank === c.rank}
                 onToggle={() =>
                   setSelectedRank((prev) => (prev === c.rank ? null : c.rank))

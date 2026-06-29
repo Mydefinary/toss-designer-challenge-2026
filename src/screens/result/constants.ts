@@ -1,7 +1,4 @@
-/** 결과 화면 공용 상수·포맷 헬퍼 */
-
-/** 업무 시간 슬롯 (점심 12시 제외). lib/recommend 에서 export 되지 않아 여기서 정의. */
-export const WORK_HOURS = [9, 10, 11, 13, 14, 15, 16, 17] as const;
+/** 결과 화면 공용 포맷·아이콘 헬퍼 (블럭 목록은 lib/recommend 의 VALID_BLOCKS 사용) */
 
 /** 정수면 그대로, 소수면 한 자리로 표기 ( -1.5, 3 ) */
 export function formatNum(n: number): string {
