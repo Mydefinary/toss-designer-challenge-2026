@@ -1,0 +1,123 @@
+/* 자연어 채팅 모드 */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 스크롤 메시지 로그 */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 320px;
+  overflow-y: auto;
+  padding: var(--space-3);
+  background: var(--gray-50);
+  border-radius: var(--radius-card);
+}
+
+.bubbleRow {
+  display: flex;
+}
+
+.rowUser {
+  justify-content: flex-end;
+}
+
+.rowSystem {
+  justify-content: flex-start;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  font-size: var(--fs-body);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 사용자 버블 — 우측, 토스 블루 */
+.user {
+  background: var(--toss-blue);
+  color: var(--bg-base);
+  border-bottom-right-radius: var(--space-1);
+}
+
+/* 시스템 버블 — 좌측, 흰 카드 */
+.system {
+  background: var(--bg-base);
+  color: var(--toss-gray);
+  box-shadow: var(--shadow-card);
+  border-bottom-left-radius: var(--space-1);
+}
+
+/* 예시 프롬프트 칩 */
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.exampleChip {
+  appearance: none;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-pill);
+  background: var(--bg-base);
+  color: var(--gray-700);
+  font-family: inherit;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.exampleChip:hover {
+  border-color: var(--toss-blue);
+  background: var(--toss-blue-tint);
+}
+
+.exampleChip:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+.exampleChip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 입력 행 */
+.inputRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-button);
+  background: var(--bg-base);
+  padding: var(--space-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  color: var(--toss-gray);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--toss-blue);
+}
+
+.input:disabled {
+  background: var(--gray-50);
+  color: var(--gray-400);
+}

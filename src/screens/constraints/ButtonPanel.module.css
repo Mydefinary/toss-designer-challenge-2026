@@ -1,0 +1,36 @@
+/* 버튼 모드 패널 — 범례/요약 + 안내 */
+.legendRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  flex-wrap: wrap;
+}
+
+.legend {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.legendItem {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--gray-500);
+}
+
+.legendItem[data-tone='available'] {
+  color: var(--status-available);
+}
+.legendItem[data-tone='avoid'] {
+  color: var(--status-avoid);
+}
+.legendItem[data-tone='unavailable'] {
+  color: var(--status-unavailable);
+}
+
+.guide {
+  margin: var(--space-3) 0 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}

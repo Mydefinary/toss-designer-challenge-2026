@@ -1,0 +1,38 @@
+/* 상단 모드 세그먼트 탭 — 토스 필 스타일 */
+.bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--gray-50);
+  border-radius: var(--radius-pill);
+  margin-bottom: var(--space-4);
+}
+
+.segment {
+  appearance: none;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-3);
+  font-family: inherit;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 2px;
+}
+
+.selected {
+  background: var(--bg-base);
+  color: var(--toss-gray);
+  box-shadow: var(--shadow-card);
+}

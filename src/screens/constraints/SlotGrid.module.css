@@ -5,10 +5,9 @@
   gap: var(--space-1);
 }
 
-/* 각 행: 시간 라벨(28px) + 요일 5칸 */
+/* 각 행: 시간 라벨(28px) + 요일 N칸. 컬럼 수는 inline style 로 주입 */
 .row {
   display: grid;
-  grid-template-columns: 28px repeat(5, 1fr);
   gap: var(--space-1);
 }
 
@@ -35,9 +34,9 @@
   color: var(--gray-400);
 }
 
-/* 셀 버튼 — 터치 타겟 ≥44px */
+/* 셀 버튼 — 모바일 격자 높이 축소 */
 .cell {
-  min-height: 44px;
+  min-height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -82,8 +81,8 @@
   color: var(--status-unavailable);
 }
 
-/* 사유 패널 편집 중인 셀 강조 */
-.editing {
+/* 팝오버가 열려 선택된 셀 강조 */
+.selected {
   box-shadow: 0 0 0 2px var(--toss-gray);
   z-index: 1;
 }
