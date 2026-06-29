@@ -3,11 +3,10 @@
  * 상태를 색+아이콘+aria-label 로 병행 표기(색만으로 구분하지 않음).
  */
 import type { Availability, ConstraintCell, Slot } from '../../types';
-import { dayName } from '../../lib/recommend';
+import { dayName, formatBlock, blockStartLabel, VALID_BLOCKS } from '../../lib/recommend';
 import styles from './SlotGrid.module.css';
 
-/** 업무시간 8슬롯(점심 12 제외) — lib 미export 이라 직접 정의 */
-const WORK_HOURS = [9, 10, 11, 13, 14, 15, 16, 17];
+/** 유효 30분 블럭(점심 6·7 제외, 16개) — lib 의 VALID_BLOCKS 사용 */
 const DAYS = [0, 1, 2, 3, 4];
 
 const STATUS_ICON: Record<Availability, string> = {
@@ -50,23 +49,23 @@ export function SlotGrid({ attendeeId, lookup, onCellClick, editingSlot }: SlotG
         ))}
       </div>
 
-      {/* 본문: 시간 라벨 + 5개 요일 셀 */}
-      {WORK_HOURS.map((startHour) => (
-        <div key={`row-${startHour}`} className={styles.row} role="row">
-          <div className={styles.timeHead}>{startHour}시</div>
+      {/* 본문: 블럭 라벨 + 5개 요일 셀 (30분 단위, 16행) */}
+      {VALID_BLOCKS.map((blockIndex) => (
+        <div key={`row-${blockIndex}`} className={styles.row} role="row">
+          <div className={styles.timeHead}>{blockStartLabel(blockIndex)}</div>
           {DAYS.map((day) => {
-            const slot: Slot = { day, startHour };
+            const slot: Slot = { day, blockIndex };
             const status = lookup(attendeeId, slot).status;
             const editing =
               editingSlot != null &&
               editingSlot.day === day &&
-              editingSlot.startHour === startHour;
+              editingSlot.blockIndex === blockIndex;
             return (
               <button
-                key={`${day}-${startHour}`}
+                key={`${day}-${blockIndex}`}
                 type="button"
                 className={`${styles.cell} ${STATUS_CLASS[status] ?? ''} ${editing ? styles.editing : ''}`}
-                aria-label={`${dayName(day)} ${startHour}시 · ${STATUS_LABEL[status]}`}
+                aria-label={`${dayName(day)} ${formatBlock({ day, blockIndex })} · ${STATUS_LABEL[status]}`}
                 aria-pressed={status !== 'available'}
                 onClick={() => onCellClick(slot)}
               >

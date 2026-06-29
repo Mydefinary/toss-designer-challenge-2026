@@ -25,13 +25,13 @@ function cellOf(
   constraints: ConstraintCell[],
   attendeeId: string,
   day: number,
-  startHour: number,
+  blockIndex: number,
 ): ConstraintCell | undefined {
   return constraints.find(
     (c) =>
       c.attendeeId === attendeeId &&
       c.slot.day === day &&
-      c.slot.startHour === startHour,
+      c.slot.blockIndex === blockIndex,
   );
 }
 
@@ -40,12 +40,12 @@ function buildLines(
   attendees: Attendee[],
   constraints: ConstraintCell[],
 ): BreakdownLine[] {
-  const { day, startHour } = candidate.slot;
+  const { day, blockIndex } = candidate.startSlot;
   const lines: BreakdownLine[] = [];
 
   for (const a of attendees) {
     const weight = a.role === 'required' ? W_REQUIRED : W_OPTIONAL;
-    const cell = cellOf(constraints, a.id, day, startHour);
+    const cell = cellOf(constraints, a.id, day, blockIndex);
     const status = cell?.status ?? 'available';
 
     if (status === 'available') {

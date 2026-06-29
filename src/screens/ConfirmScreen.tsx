@@ -6,7 +6,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Card } from '../components/ui';
 import { useCandidates, useConfig, useScenarioMeta } from '../store';
-import { formatSlot } from '../lib/recommend';
+import { dayName, formatRange } from '../lib/recommend';
 import ShareSection from './confirm/ShareSection';
 import styles from './confirm/confirm.module.css';
 
@@ -33,12 +33,12 @@ export default function ConfirmScreen() {
   // 공유 링크 — 해시 라우팅 + 시나리오/1순위 슬롯
   const shareUrl =
     `${window.location.origin}${window.location.pathname}` +
-    `#/confirm?s=${meta.id}&top=${top.slot.day}-${top.slot.startHour}`;
+    `#/confirm?s=${meta.id}&top=${top.startSlot.day}-${top.startSlot.blockIndex}`;
 
   // 사람이 읽는 요약 텍스트
   const summaryText = [
     `📌 ${config.title}`,
-    ...candidates.map((c) => `${c.rank}순위 ${formatSlot(c.slot)}`),
+    ...candidates.map((c) => `${c.rank}순위 ${dayName(c.startSlot.day)} ${formatRange(c.startSlot, config.durationMinutes)}`),
   ].join('\n');
 
   return (
@@ -58,7 +58,7 @@ export default function ConfirmScreen() {
               {top.satisfied.length}명 참석
             </Badge>
           </div>
-          <p className={styles.topTime}>{formatSlot(top.slot)}</p>
+          <p className={styles.topTime}>{dayName(top.startSlot.day)} {formatRange(top.startSlot, config.durationMinutes)}</p>
           {top.yielding.length > 0 && (
             <p className={styles.meta}>
               양보 {top.yielding.map((y) => `${y.attendee.name}님`).join(', ')}
@@ -76,7 +76,7 @@ export default function ConfirmScreen() {
                 <Card key={c.rank} className={styles.backupCard}>
                   <Badge tone="neutral">예비 {c.rank}순위</Badge>
                   <div className={styles.backupBody}>
-                    <p className={styles.backupTime}>{formatSlot(c.slot)}</p>
+                    <p className={styles.backupTime}>{dayName(c.startSlot.day)} {formatRange(c.startSlot, config.durationMinutes)}</p>
                     <p className={styles.backupMeta}>
                       참석 {c.satisfied.length}명
                       {c.yielding.length > 0 ? ` · 양보 ${c.yielding.length}명` : ''}

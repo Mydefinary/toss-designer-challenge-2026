@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useConfig, useAttendees, useMeetingActions } from '../store';
 import { Button, Card, Badge } from '../components/ui';
 import type { MeetingLocation } from '../types';
+import { businessDayCount } from '../lib/recommend';
 import { SegmentToggle, type SegmentOption } from './create/SegmentToggle';
 import { AttendeeRow } from './create/AttendeeRow';
 import styles from './create/CreateScreen.module.css';
@@ -12,6 +13,14 @@ const LOCATION_OPTIONS: SegmentOption<MeetingLocation>[] = [
   { value: 'offline', label: '오프라인' },
   { value: 'online', label: '온라인' },
 ];
+
+/** 분 단위 회의 길이 → 한국어 표기 (30→"30분", 90→"1시간 30분") */
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}분`;
+  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
+}
 
 export default function CreateScreen() {
   const config = useConfig();
@@ -55,9 +64,9 @@ export default function CreateScreen() {
         <div className={styles.fixedRow}>
           <div className={styles.fixedText}>
             <span className={styles.fixedLabel}>회의 길이</span>
-            <span className={styles.fixedValue}>1시간</span>
+            <span className={styles.fixedValue}>{formatDuration(config.durationMinutes)}</span>
           </div>
-          <Badge tone="neutral">1시간 고정 · 변경 불가</Badge>
+          <Badge tone="neutral">{formatDuration(config.durationMinutes)} · 30분 블럭</Badge>
         </div>
         <div className={styles.divider} />
         <div className={styles.fixedRow}>
@@ -65,7 +74,7 @@ export default function CreateScreen() {
             <span className={styles.fixedLabel}>후보 기간</span>
             <span className={styles.fixedValue}>다음 주 · 영업일 월~금</span>
           </div>
-          <Badge tone="neutral">{config.rangeDays}일 고정</Badge>
+          <Badge tone="neutral">{businessDayCount(config.dateRange)}일 고정</Badge>
         </div>
       </Card>
 

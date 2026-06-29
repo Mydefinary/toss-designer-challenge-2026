@@ -12,7 +12,7 @@ import {
   useMeetingActions,
   useMeetingStore,
 } from '../store';
-import { formatSlot } from '../lib/recommend';
+import { formatRange } from '../lib/recommend';
 import type { MeetingConfig, RankedCandidate } from '../types';
 import { Button, Card } from '../components/ui';
 import { CurrentMeetingCard } from './operate/CurrentMeetingCard';
@@ -37,7 +37,7 @@ function buildSummary(
 
   return [
     `[MEETSYNC] ${config.title}`,
-    `확정 시간: ${formatSlot(current.slot)} (현재 ${currentIndex + 1}순위)`,
+    `확정 시간: ${formatRange(current.startSlot, config.durationMinutes)} (현재 ${currentIndex + 1}순위)`,
     `장소: ${locationText}`,
     `참석: ${satisfied}`,
     `양보: ${yielding} / 불참: ${absent}`,

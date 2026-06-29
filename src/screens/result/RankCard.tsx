@@ -56,7 +56,7 @@ export default function RankCard({
         </div>
 
         <p className={cx(styles.slotTime, isTop && styles.slotTimeTop)}>
-          {formatSlot(candidate.slot)}
+          {formatSlot(candidate.startSlot)}
         </p>
 
         {candidate.satisfied.length > 0 && (

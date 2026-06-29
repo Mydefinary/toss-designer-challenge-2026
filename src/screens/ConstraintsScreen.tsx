@@ -115,7 +115,7 @@ export default function ConstraintsScreen() {
       {/* 3. 불가 사유 패널 — 편집 중인 셀이 있을 때만 */}
       {editingSlot && editingCell && (
         <ReasonPicker
-          key={`${editingSlot.day}-${editingSlot.startHour}`}
+          key={`${editingSlot.day}-${editingSlot.blockIndex}`}
           slot={editingSlot}
           reason={editingCell.reason}
           reasonText={editingCell.reasonText}

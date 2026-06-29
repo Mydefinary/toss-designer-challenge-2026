@@ -1,5 +1,5 @@
 import { Card, Badge, AvatarStack, Chip } from '../../components/ui';
-import { formatSlot } from '../../lib/recommend';
+import { formatRange } from '../../lib/recommend';
 import type { MeetingConfig, RankedCandidate } from '../../types';
 import styles from './CurrentMeetingCard.module.css';
 
@@ -34,7 +34,7 @@ export function CurrentMeetingCard({ config, current, currentIndex, total }: Cur
 
       <div className={styles.timeBlock}>
         <span className={styles.timeLabel}>확정 시간</span>
-        <span className={styles.time}>{formatSlot(current.slot)}</span>
+        <span className={styles.time}>{formatRange(current.startSlot, config.durationMinutes)}</span>
       </div>
 
       <div className={styles.locationRow}>

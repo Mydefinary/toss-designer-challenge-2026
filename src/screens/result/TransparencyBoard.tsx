@@ -7,8 +7,8 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Availability, ConstraintCell } from '../../types';
 import { useAttendees, useConstraints } from '../../store';
-import { dayName, formatSlot } from '../../lib/recommend';
-import { WORK_HOURS, STATUS_ICON } from './constants';
+import { dayName, formatSlot, blockStartLabel, VALID_BLOCKS } from '../../lib/recommend';
+import { STATUS_ICON } from './constants';
 import styles from './result.module.css';
 
 const cx = (...classes: (string | false | undefined)[]) =>
@@ -19,7 +19,7 @@ const DAYS = [0, 1, 2, 3, 4];
 interface SelectedCell {
   attendeeId: string;
   day: number;
-  hour: number;
+  block: number;
 }
 
 const STATUS_CELL_CLASS: Record<Availability, string | undefined> = {
@@ -43,26 +43,26 @@ export default function TransparencyBoard() {
   const [selectedDay, setSelectedDay] = useState(0);
   const [selected, setSelected] = useState<SelectedCell | null>(null);
 
-  const cellOf = (attendeeId: string, day: number, hour: number) =>
+  const cellOf = (attendeeId: string, day: number, block: number) =>
     constraints.find(
-      (c) => c.attendeeId === attendeeId && c.slot.day === day && c.slot.startHour === hour,
+      (c) => c.attendeeId === attendeeId && c.slot.day === day && c.slot.blockIndex === block,
     );
 
   /** 단일 셀 버튼 렌더 */
-  const renderCell = (attendeeId: string, name: string, day: number, hour: number): ReactNode => {
-    const cell = cellOf(attendeeId, day, hour);
+  const renderCell = (attendeeId: string, name: string, day: number, block: number): ReactNode => {
+    const cell = cellOf(attendeeId, day, block);
     const status: Availability = cell?.status ?? 'available';
     const reason = reasonOf(cell, status);
     const isSel =
-      selected?.attendeeId === attendeeId && selected.day === day && selected.hour === hour;
+      selected?.attendeeId === attendeeId && selected.day === day && selected.block === block;
     return (
       <button
-        key={`${attendeeId}-${day}-${hour}`}
+        key={`${attendeeId}-${day}-${block}`}
         type="button"
         className={cx(styles.cell, STATUS_CELL_CLASS[status], isSel && styles.cellSelected)}
-        title={`${name} · ${formatSlot({ day, startHour: hour })} — ${reason}`}
-        aria-label={`${name} ${formatSlot({ day, startHour: hour })} ${reason}`}
-        onClick={() => setSelected({ attendeeId, day, hour })}
+        title={`${name} · ${formatSlot({ day, blockIndex: block })} — ${reason}`}
+        aria-label={`${name} ${formatSlot({ day, blockIndex: block })} ${reason}`}
+        onClick={() => setSelected({ attendeeId, day, block })}
       >
         {STATUS_ICON[status]}
       </button>
@@ -84,7 +84,7 @@ export default function TransparencyBoard() {
   }
 
   // ===== 전체 격자(데스크탑) 컬럼 목록 =====
-  const allCols = DAYS.flatMap((d) => WORK_HOURS.map((h) => ({ day: d, hour: h })));
+  const allCols = DAYS.flatMap((d) => VALID_BLOCKS.map((b) => ({ day: d, block: b })));
 
   return (
     <div className={styles.board}>
@@ -121,9 +121,9 @@ export default function TransparencyBoard() {
       {/* 단일 일자 격자 (모바일 기본) */}
       <div className={styles.gridSingle}>
         <span className={styles.gridRowLabel}>{dayName(selectedDay)}</span>
-        {WORK_HOURS.map((h) => (
-          <span key={`h-${h}`} className={styles.gridHeadCell}>
-            {h}
+        {VALID_BLOCKS.map((b) => (
+          <span key={`h-${b}`} className={styles.gridHeadCell}>
+            {blockStartLabel(b)}
           </span>
         ))}
         {attendees.map((a) => (
@@ -131,7 +131,7 @@ export default function TransparencyBoard() {
             <span className={styles.gridRowLabel} title={a.name}>
               {a.name}
             </span>
-            {WORK_HOURS.map((h) => renderCell(a.id, a.name, selectedDay, h))}
+            {VALID_BLOCKS.map((b) => renderCell(a.id, a.name, selectedDay, b))}
           </Row>
         ))}
       </div>
@@ -147,8 +147,8 @@ export default function TransparencyBoard() {
           ))}
           <span className={styles.gridRowLabel} />
           {allCols.map((col) => (
-            <span key={`fh-${col.day}-${col.hour}`} className={styles.gridHeadCell}>
-              {col.hour}
+            <span key={`fh-${col.day}-${col.block}`} className={styles.gridHeadCell}>
+              {blockStartLabel(col.block)}
             </span>
           ))}
           {attendees.map((a) => (
@@ -156,7 +156,7 @@ export default function TransparencyBoard() {
               <span className={styles.gridRowLabel} title={a.name}>
                 {a.name}
               </span>
-              {allCols.map((col) => renderCell(a.id, a.name, col.day, col.hour))}
+              {allCols.map((col) => renderCell(a.id, a.name, col.day, col.block))}
             </Row>
           ))}
         </div>
@@ -166,11 +166,11 @@ export default function TransparencyBoard() {
         <p className={styles.cellReason} role="status">
           {(() => {
             const a = attendees.find((x) => x.id === selected.attendeeId);
-            const cell = cellOf(selected.attendeeId, selected.day, selected.hour);
+            const cell = cellOf(selected.attendeeId, selected.day, selected.block);
             const status: Availability = cell?.status ?? 'available';
             return `${a?.name ?? ''} · ${formatSlot({
               day: selected.day,
-              startHour: selected.hour,
+              blockIndex: selected.block,
             })} — ${reasonOf(cell, status)}`;
           })()}
         </p>
