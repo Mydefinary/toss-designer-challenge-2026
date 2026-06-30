@@ -41,8 +41,8 @@ describe('nlParser — 로컬 규칙기반 파서', () => {
     const r = parseConstraints('지훈 화요일 종일 불가, 도윤 금요일 17시 회피', attendees, config);
     const jihun = r.cells.filter((c) => c.attendeeId === 'a-jihun');
     const doyun = r.cells.filter((c) => c.attendeeId === 'a-doyun');
-    // 지훈: 화요일 종일(16블럭) 불가
-    expect(jihun.length).toBe(16);
+    // 지훈: 화요일 종일(18블럭, 점심 포함) 불가
+    expect(jihun.length).toBe(18);
     expect(jihun.every((c) => c.status === 'unavailable' && c.slot.day === 1)).toBe(true);
     // 도윤: 금요일 17시대(16,17) 회피
     expect(doyun.length).toBe(2);

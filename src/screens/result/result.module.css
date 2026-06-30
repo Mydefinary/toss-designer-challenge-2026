@@ -354,6 +354,19 @@
   color: var(--status-unavailable);
 }
 
+/* 점심 기본 불가 — 옅은 빗금으로 시스템 규칙임을 구분(개인 제약과 다름) */
+.cellLunch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--gray-100) 0,
+    var(--gray-100) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  background-color: var(--gray-50);
+  color: var(--gray-400);
+}
+
 .cellSelected {
   outline: 2px solid var(--toss-gray);
   outline-offset: -1px;

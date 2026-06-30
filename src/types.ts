@@ -26,7 +26,8 @@ export interface Attendee {
 }
 
 /** 30분 블럭 슬롯. day=0-based 영업일 인덱스(0=dateRange 첫 영업일).
- * blockIndex: 0=09:00–09:30 … 17=17:30–18:00. 점심 12:00–13:00 = blockIndex 6·7 제외 → 유효블럭 {0–5,8–17} 하루 16개. */
+ * blockIndex: 0=09:00–09:30 … 17=17:30–18:00. 유효블럭 {0–17} 하루 18개(끊김 없이 전부 표시).
+ * 점심 11:30–13:00 = blockIndex 5·6·7 은 격자에 보이되 명시적 제약이 없으면 기본 '불가'(사유 '점심')로 처리. */
 export interface Slot {
   day: number;
   blockIndex: number;

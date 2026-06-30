@@ -1,31 +1,47 @@
 /**
- * 버튼 모드 패널 — 참석자 선택 + 주간 격자 + 상태 팝오버.
+ * 버튼 모드 패널 — 참석자 선택 + 브러시 팔레트 + 주간 격자.
+ * 팝오버/모달 없이 현재 화면에서 브러시를 고르고 격자 셀을 클릭/드래그해 즉시 칠한다.
  * 제약은 절대 로컬 복제하지 않고 store(useConstraints)에서 파생한다.
  */
-import { useMemo, useState } from 'react';
-import { useConstraints, useAttendees, useConfig } from '../../store';
+import { useCallback, useMemo, useState } from 'react';
+import { useConstraints, useAttendees, useConfig, useMeetingActions } from '../../store';
 import { makeConstraintLookup, businessDayCount } from '../../lib/recommend';
 import { Badge } from '../../components/ui';
-import type { Slot } from '../../types';
+import type { Availability, ConstraintCell, Slot, UnavailableReason } from '../../types';
 import { AttendeeTabs } from './AttendeeTabs';
+import { BrushPalette } from './BrushPalette';
 import { SlotGrid } from './SlotGrid';
-import { StatusPopover } from './StatusPopover';
 import styles from './ButtonPanel.module.css';
 
 export function ButtonPanel() {
   const constraints = useConstraints();
   const attendees = useAttendees();
   const config = useConfig();
+  const { setConstraint } = useMeetingActions();
 
   // 선택 참석자 — 사라지면 첫 참석자로 폴백
   const [picked, setPicked] = useState<string>('');
   const selectedId = attendees.some((a) => a.id === picked) ? picked : (attendees[0]?.id ?? '');
 
-  // 팝오버가 열린 셀(없으면 null)
-  const [openSlot, setOpenSlot] = useState<Slot | null>(null);
+  // 현재 브러시 상태 + 불가 사유
+  const [brush, setBrush] = useState<Availability>('unavailable');
+  const [reason, setReason] = useState<UnavailableReason | undefined>(undefined);
+  const [otherText, setOtherText] = useState<string>('');
 
-  // store 제약에서 파생한 조회 헬퍼 — 없으면 'available'
+  // store 제약에서 파생한 조회 헬퍼 — 점심 기본불가 포함 효과적 상태
   const lookup = useMemo(() => makeConstraintLookup(constraints), [constraints]);
+
+  // 명시적으로 저장된 상태만 조회 (점심 기본불가 제외) — 토글/점심구분 판정용
+  const explicitMap = useMemo(() => {
+    const m = new Map<string, Availability>();
+    for (const c of constraints) m.set(`${c.attendeeId}|${c.slot.day}-${c.slot.blockIndex}`, c.status);
+    return m;
+  }, [constraints]);
+  const explicitStatusOf = useCallback(
+    (attendeeId: string, slot: Slot): Availability | null =>
+      explicitMap.get(`${attendeeId}|${slot.day}-${slot.blockIndex}`) ?? null,
+    [explicitMap],
+  );
 
   // 영업일(열) 수
   const dayCount = useMemo(() => businessDayCount(config.dateRange), [config.dateRange]);
@@ -42,31 +58,38 @@ export function ButtonPanel() {
     return { avoidCount: avoid, unavailableCount: unavailable };
   }, [constraints, selectedId]);
 
-  function selectAttendee(id: string) {
-    setPicked(id);
-    setOpenSlot(null); // 참석자 전환 시 팝오버 닫기
-  }
-
-  const openCell = openSlot ? lookup(selectedId, openSlot) : null;
+  // 한 셀에 상태를 즉시 반영 — 불가면 현재 사유를 함께 저장
+  const applyToCell = useCallback(
+    (slot: Slot, status: Availability) => {
+      if (status === 'unavailable') {
+        const cell: ConstraintCell = { attendeeId: selectedId, slot, status: 'unavailable' };
+        if (reason) cell.reason = reason;
+        if (reason === '기타' && otherText.trim()) cell.reasonText = otherText.trim();
+        setConstraint(cell);
+      } else {
+        setConstraint({ attendeeId: selectedId, slot, status });
+      }
+    },
+    [selectedId, reason, otherText, setConstraint],
+  );
 
   return (
     <div>
       {/* 참석자 탭 */}
-      <AttendeeTabs attendees={attendees} selectedId={selectedId} onSelect={selectAttendee} />
+      <AttendeeTabs attendees={attendees} selectedId={selectedId} onSelect={setPicked} />
 
-      {/* 범례 + 요약 */}
-      <div className={styles.legendRow}>
-        <div className={styles.legend}>
-          <span className={styles.legendItem} data-tone="available">
-            ● 가능
-          </span>
-          <span className={styles.legendItem} data-tone="avoid">
-            ▲ 회피
-          </span>
-          <span className={styles.legendItem} data-tone="unavailable">
-            ✕ 불가
-          </span>
-        </div>
+      {/* 브러시 팔레트 (가능/회피/불가 + 사유) */}
+      <BrushPalette
+        brush={brush}
+        onBrush={setBrush}
+        reason={reason}
+        onReason={setReason}
+        otherText={otherText}
+        onOtherText={setOtherText}
+      />
+
+      {/* 요약 뱃지 */}
+      <div className={styles.summaryRow}>
         <Badge tone={unavailableCount + avoidCount > 0 ? 'unavailable' : 'neutral'}>
           불가 {unavailableCount}칸 · 회피 {avoidCount}칸
         </Badge>
@@ -76,23 +99,16 @@ export function ButtonPanel() {
       <SlotGrid
         attendeeId={selectedId}
         lookup={lookup}
+        explicitStatusOf={explicitStatusOf}
         dayCount={dayCount}
-        onCellClick={(slot) => setOpenSlot(slot)}
-        selectedSlot={openSlot}
+        brushStatus={brush}
+        onApply={applyToCell}
       />
 
-      <p className={styles.guide}>칸을 누르면 가능·회피·불가를 고르는 창이 열려요.</p>
-
-      {/* 상태 팝오버 */}
-      {openSlot && openCell && (
-        <StatusPopover
-          key={`${openSlot.day}-${openSlot.blockIndex}`}
-          attendeeId={selectedId}
-          slot={openSlot}
-          cell={openCell}
-          onClose={() => setOpenSlot(null)}
-        />
-      )}
+      <p className={styles.guide}>
+        브러시를 고르고 칸을 누르거나 드래그하면 바로 반영돼요. 같은 칸을 같은 브러시로 다시 누르면 해제돼요.
+        점심(빗금) 칸은 기본 불가예요.
+      </p>
     </div>
   );
 }

@@ -1,0 +1,112 @@
+/* 브러시 팔레트 — 격자 위 상태 선택 */
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.brushes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+/* 개별 브러시 버튼 */
+.brush {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-chip);
+  background: var(--bg-base);
+  color: var(--gray-500);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.brush:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 1px;
+}
+
+.brushIcon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.brushLabel {
+  line-height: 1;
+}
+
+/* 톤별 색 — 선택 여부와 무관하게 아이콘/테두리 색을 부여 */
+.available {
+  color: var(--status-available);
+}
+.avoid {
+  color: var(--status-avoid);
+}
+.unavailable {
+  color: var(--status-unavailable);
+}
+
+/* 현재 선택된 브러시 — 톤 배경 + 굵은 외곽선으로 강조 */
+.brushSelected {
+  box-shadow: 0 0 0 2px currentColor inset;
+}
+.available.brushSelected {
+  background: var(--status-available-tint);
+  border-color: var(--status-available);
+}
+.avoid.brushSelected {
+  background: var(--status-avoid-tint);
+  border-color: var(--status-avoid);
+}
+.unavailable.brushSelected {
+  background: var(--status-unavailable-tint);
+  border-color: var(--status-unavailable);
+}
+
+/* 불가 사유 영역 */
+.reasonArea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-chip);
+}
+
+.reasonHint {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-chip);
+  font-size: var(--fs-body);
+  font-family: inherit;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 1px;
+  border-color: var(--toss-blue);
+}

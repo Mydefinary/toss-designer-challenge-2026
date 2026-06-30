@@ -45,6 +45,10 @@
   background: var(--bg-base);
   cursor: pointer;
   padding: 0;
+  /* 드래그로 여러 칸을 칠할 때 스크롤/텍스트 선택 방지 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     background-color 0.1s ease,
     border-color 0.1s ease,
@@ -81,8 +85,21 @@
   color: var(--status-unavailable);
 }
 
-/* 팝오버가 열려 선택된 셀 강조 */
-.selected {
-  box-shadow: 0 0 0 2px var(--toss-gray);
-  z-index: 1;
+/* 점심 기본 불가 셀 — 옅은 회색 빗금 배경으로 살짝 구분(불가 ✕ 아이콘은 유지) */
+.lunch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--gray-100) 0,
+    var(--gray-100) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  background-color: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+}
+
+/* 점심 행 시간 라벨 — 더 옅게 */
+.lunchHead {
+  color: var(--gray-300);
 }

@@ -9,8 +9,11 @@ import {
   businessDayCount,
   formatBlock,
   formatRange,
+  makeConstraintLookup,
+  isLunchBlock,
   VALID_BLOCKS,
   BLOCKS_PER_DAY,
+  LUNCH_BLOCKS,
 } from './recommend';
 import type { Attendee, ConstraintCell, MeetingConfig } from '../types';
 import { scenarios } from '../data/scenarios';
@@ -33,16 +36,19 @@ function makeConfig(over?: Partial<MeetingConfig>): MeetingConfig {
 }
 
 describe('generateSlots / 블럭 모델', () => {
-  it('1. 5영업일 × 16블럭 = 80슬롯, 점심(6·7) 제외, blockIndex 유효', () => {
+  it('1. 5영업일 × 18블럭 = 90슬롯, 점심(5·6·7) 포함(끊김 없이), blockIndex 유효', () => {
     const slots = generateSlots(makeConfig());
-    expect(slots).toHaveLength(80);
-    // 점심 블럭 6·7 은 없어야 한다
-    expect(slots.some((s) => s.blockIndex === 6 || s.blockIndex === 7)).toBe(false);
+    expect(slots).toHaveLength(90);
+    // 점심 블럭 5·6·7 도 격자에 포함된다(표시는 하되 기본 불가)
+    expect(slots.some((s) => s.blockIndex === 5)).toBe(true);
+    expect(slots.some((s) => s.blockIndex === 6)).toBe(true);
+    expect(slots.some((s) => s.blockIndex === 7)).toBe(true);
     // 모든 블럭이 유효집합에 속한다
     expect(slots.every((s) => VALID_BLOCKS.includes(s.blockIndex))).toBe(true);
-    // day 범위 0–4, 하루 16블럭
+    // day 범위 0–4, 하루 18블럭(09:00–18:00 끊김 없음)
     expect(slots.every((s) => s.day >= 0 && s.day <= 4)).toBe(true);
     expect(slots.filter((s) => s.day === 0)).toHaveLength(BLOCKS_PER_DAY);
+    expect(BLOCKS_PER_DAY).toBe(18);
     // businessDayCount: 월~금 = 5
     expect(businessDayCount({ start: '2026-06-29', end: '2026-07-03' })).toBe(5);
     expect(businessDayCount({ start: '2026-07-04', end: '2026-07-05' })).toBe(0); // 주말
@@ -55,6 +61,47 @@ describe('generateSlots / 블럭 모델', () => {
     expect(formatBlock({ day: 0, blockIndex: 17 })).toBe('17:30–18:00');
     expect(formatRange({ day: 0, blockIndex: 8 }, 60)).toBe('13:00–14:00');
     expect(formatRange({ day: 0, blockIndex: 0 }, 90)).toBe('09:00–10:30');
+  });
+});
+
+describe('점심 블럭 기본 불가 (5·6·7)', () => {
+  it('1-1. makeConstraintLookup — 점심 블럭은 제약 없으면 기본 불가(사유 점심), 그 외는 가능', () => {
+    const lookup = makeConstraintLookup([]);
+    for (const b of LUNCH_BLOCKS) {
+      const cell = lookup('X', { day: 0, blockIndex: b });
+      expect(cell.status).toBe('unavailable');
+      expect(cell.reasonText).toBe('점심');
+    }
+    // 점심 아닌 블럭은 기본 가능
+    expect(lookup('X', { day: 0, blockIndex: 4 }).status).toBe('available');
+    expect(lookup('X', { day: 0, blockIndex: 8 }).status).toBe('available');
+  });
+
+  it('1-2. 명시적 override — 점심 칸을 가능으로 칠하면 후보가 생긴다', () => {
+    const a: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
+    const c30 = makeConfig({ durationMinutes: 30 });
+    // override 없으면 점심(block6) 시작 30분 후보는 없다
+    const base = scoreAllCandidates(a, [], c30);
+    expect(base.some((c) => c.startSlot.blockIndex === 6)).toBe(false);
+    // block6 을 명시적 available 로 override 하면 후보가 생긴다
+    const override: ConstraintCell[] = [{ attendeeId: 'R', slot: { day: 0, blockIndex: 6 }, status: 'available' }];
+    const withOverride = scoreAllCandidates(a, override, c30);
+    expect(withOverride.some((c) => slotKey(c.startSlot) === '0-6')).toBe(true);
+  });
+
+  it('1-3. 점심에 걸치는 연속 블럭(11:30–12:30)은 후보에서 제외된다', () => {
+    const a: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
+    const c60 = makeConfig({ durationMinutes: 60 });
+    const all = scoreAllCandidates(a, [], c60);
+    // 어떤 60분 후보도 점유 블럭에 점심(5·6·7)을 포함하지 않는다
+    for (const c of all) {
+      const occupied = [c.startSlot.blockIndex, c.startSlot.blockIndex + 1];
+      expect(occupied.some((b) => LUNCH_BLOCKS.includes(b))).toBe(false);
+    }
+    // 11:30(block5) 시작 60분([5,6])은 점심이라 제외
+    expect(all.some((c) => c.startSlot.blockIndex === 5)).toBe(false);
+    // 11:00(block4) 시작 60분([4,5])도 block5 가 점심이라 제외
+    expect(all.some((c) => c.startSlot.blockIndex === 4)).toBe(false);
   });
 });
 
@@ -116,8 +163,10 @@ describe('가변 회의 길이', () => {
     expect(n30[0]!.blocks).toBe(1);
     expect(c60[0]!.blocks).toBe(2);
     expect(n90[0]!.blocks).toBe(3);
-    // 30분: 5일 × 16블럭 = 80
-    expect(n30.length).toBe(80);
+    // 30분: 점심(5·6·7)은 기본 불가라 후보에서 빠짐 → 5일 × 15블럭 = 75
+    expect(n30.length).toBe(75);
+    // 어떤 후보도 점심 블럭에서 시작하지 않는다
+    expect(n30.every((c) => !isLunchBlock(c.startSlot.blockIndex))).toBe(true);
   });
 });
 

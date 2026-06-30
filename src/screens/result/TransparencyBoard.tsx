@@ -7,7 +7,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Availability, ConstraintCell } from '../../types';
 import { useAttendees, useConstraints } from '../../store';
-import { dayName, formatBlock, blockStartLabel, VALID_BLOCKS } from '../../lib/recommend';
+import { dayName, formatBlock, blockStartLabel, isLunchBlock, VALID_BLOCKS } from '../../lib/recommend';
 import { STATUS_ICON } from './constants';
 import styles from './result.module.css';
 
@@ -61,8 +61,10 @@ export default function TransparencyBoard() {
     blockIndex: number,
   ): ReactNode => {
     const cell = cellOf(attendeeId, day, blockIndex);
-    const status: Availability = cell?.status ?? 'available';
-    const reason = reasonOf(cell, status);
+    // 점심 블럭은 명시 제약이 없으면 기본 불가(사유 '점심')로 표시
+    const lunchAuto = !cell && isLunchBlock(blockIndex);
+    const status: Availability = cell?.status ?? (lunchAuto ? 'unavailable' : 'available');
+    const reason = lunchAuto ? '점심' : reasonOf(cell, status);
     const isSel =
       selected?.attendeeId === attendeeId &&
       selected.day === day &&
@@ -71,7 +73,7 @@ export default function TransparencyBoard() {
       <button
         key={`${attendeeId}-${day}-${blockIndex}`}
         type="button"
-        className={cx(styles.cell, STATUS_CELL_CLASS[status], isSel && styles.cellSelected)}
+        className={cx(styles.cell, STATUS_CELL_CLASS[status], lunchAuto && styles.cellLunch, isSel && styles.cellSelected)}
         title={`${name} · ${formatBlock({ day, blockIndex })} — ${reason}`}
         aria-label={`${name} ${formatBlock({ day, blockIndex })} ${reason}`}
         onClick={() => setSelected({ attendeeId, day, blockIndex })}
@@ -179,11 +181,12 @@ export default function TransparencyBoard() {
           {(() => {
             const a = attendees.find((x) => x.id === selected.attendeeId);
             const cell = cellOf(selected.attendeeId, selected.day, selected.blockIndex);
-            const status: Availability = cell?.status ?? 'available';
+            const lunchAuto = !cell && isLunchBlock(selected.blockIndex);
+            const status: Availability = cell?.status ?? (lunchAuto ? 'unavailable' : 'available');
             return `${a?.name ?? ''} · ${formatBlock({
               day: selected.day,
               blockIndex: selected.blockIndex,
-            })} — ${reasonOf(cell, status)}`;
+            })} — ${lunchAuto ? '점심' : reasonOf(cell, status)}`;
           })()}
         </p>
       )}

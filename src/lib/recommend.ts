@@ -27,11 +27,22 @@ export const ROOM_PENALTY = -5;
 
 // ===== 블럭/업무시간 정의 =====
 const DAY_NAMES = ['월', '화', '수', '목', '금'];
-/** 유효 블럭 — 점심(12:00–13:00 = blockIndex 6·7) 제외 → 하루 16개 */
-export const VALID_BLOCKS = [0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+/** 유효 블럭 — 09:00–18:00 모든 30분 칸(점심 포함, 끊김 없이) → 하루 18개 */
+export const VALID_BLOCKS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 /** 하루 유효 블럭 수 */
-export const BLOCKS_PER_DAY = 16;
+export const BLOCKS_PER_DAY = 18;
 const VALID_BLOCK_SET = new Set(VALID_BLOCKS);
+
+/** 점심 블럭 — 11:30–13:00 = blockIndex 5·6·7. 격자에는 표시하되 명시적 제약이 없으면 기본 '불가'로 간주 */
+export const LUNCH_BLOCKS = [5, 6, 7];
+const LUNCH_BLOCK_SET = new Set(LUNCH_BLOCKS);
+/** 점심 기본 불가 사유 라벨 (reasonText 로 부착) */
+export const LUNCH_REASON = '점심';
+
+/** 점심 블럭 여부 — 명시적 제약이 없으면 기본 불가로 처리되는 칸 */
+export function isLunchBlock(blockIndex: number): boolean {
+  return LUNCH_BLOCK_SET.has(blockIndex);
+}
 
 /** blockIndex → 분(09:00 기준 오프셋 적용한 절대 분). 0→540(09:00) */
 function blockMinutes(blockIndex: number): number {
@@ -118,7 +129,8 @@ function blocksFor(durationMinutes: DurationMinutes): number {
 
 /**
  * 후보 시작 블럭 b 가 유효한지 — 점유블럭 [b, b+1, …, b+n-1]이 모두 VALID_BLOCKS 에 속해야 한다.
- * (정수 연속이므로 점심 6·7 을 건너뛰면 자동 제외, 18 이상 초과도 제외)
+ * (점심 블럭도 VALID_BLOCKS 이므로 여기서는 통과하고, 점심 기본 불가는 makeConstraintLookup 에서
+ *  필수자 'unavailable' 로 합성돼 후보가 제외된다. 18 이상 초과는 여기서 제외)
  */
 function occupiedBlocks(startBlock: number, n: number): number[] | null {
   const blocks: number[] = [];
@@ -133,6 +145,8 @@ function occupiedBlocks(startBlock: number, n: number): number[] | null {
 /**
  * 제약 조회 헬퍼 — (attendeeId, slot) 의 셀을 반환.
  * 입력에 없는 셀은 'available'(가능)로 간주한다.
+ * 단, 점심 블럭(LUNCH_BLOCKS)은 명시적 제약이 없으면 기본 '불가'(사유 '점심')로 간주한다.
+ * 사용자가 점심 칸을 명시적으로 가능/회피로 칠하면 그 값(override)을 그대로 따른다.
  */
 export function makeConstraintLookup(
   constraints: ConstraintCell[],
@@ -143,7 +157,12 @@ export function makeConstraintLookup(
   }
   return (attendeeId, slot) => {
     const found = map.get(`${attendeeId}|${slotKey(slot)}`);
-    return found ?? { attendeeId, slot, status: 'available' };
+    if (found) return found; // 명시적 제약(override) 우선
+    if (LUNCH_BLOCK_SET.has(slot.blockIndex)) {
+      // 점심 기본 불가 — 시드 데이터를 고치지 않고 로직에서 처리
+      return { attendeeId, slot, status: 'unavailable', reasonText: LUNCH_REASON };
+    }
+    return { attendeeId, slot, status: 'available' };
   };
 }
 
