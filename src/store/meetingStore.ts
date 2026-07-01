@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type {
   Attendee,
   AttendeeRole,
+  Availability,
   ConstraintCell,
   DurationMinutes,
   MeetingConfig,
@@ -15,7 +16,7 @@ import type {
   RelaxationSuggestion,
   Room,
 } from '../types';
-import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey } from '../lib/recommend';
+import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey, isLunchBlock } from '../lib/recommend';
 import { scenarios, defaultScenario, type Scenario } from '../data/scenarios';
 
 // ===== 헬퍼 타입 =====
@@ -277,9 +278,11 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
   setConstraint: (cell) => {
     const { day, blockIndex } = cell.slot;
     const without = get().constraints.filter((c) => !sameCell(c, cell.attendeeId, day, blockIndex));
-    // available 은 저장하지 않는 시드 관례 — 제거만 하고 추가하지 않음
+    // 슬롯 기본값과 같은 상태는 저장하지 않고 제거(=기본 복귀).
+    // 점심 블럭(5·6·7) 기본은 '불가', 그 외는 '가능'. 점심칸을 '가능'으로 override하면 저장돼 유지된다.
+    const defaultStatus: Availability = isLunchBlock(blockIndex) ? 'unavailable' : 'available';
     const constraints =
-      cell.status === 'available' ? without : [...without, structuredClone(cell)];
+      cell.status === defaultStatus ? without : [...without, structuredClone(cell)];
     const { attendees, config } = get();
     set({
       constraints,

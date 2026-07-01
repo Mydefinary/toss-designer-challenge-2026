@@ -5,9 +5,3 @@
   justify-content: flex-end;
   margin: 0 0 var(--space-2);
 }
-
-.guide {
-  margin: var(--space-3) 0 0;
-  font-size: var(--fs-caption);
-  color: var(--gray-500);
-}

@@ -6,6 +6,24 @@
   margin: var(--space-3) 0;
 }
 
+/* 2단계 사용법 안내 헤더 */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.headTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-700);
+}
+
+.headSteps {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
 .brushes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -109,4 +127,43 @@
   outline: 2px solid var(--toss-blue);
   outline-offset: 1px;
   border-color: var(--toss-blue);
+}
+
+/* 상태 범례 — 아이콘+라벨 병행, 팔레트 맨 아래 */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.legendIcon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 점심 빗금 스와치 — SlotGrid .lunch 빗금 배경을 작은 정사각형으로 재사용 */
+.lunchSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--gray-200);
+  background-color: var(--gray-50);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--gray-100) 0,
+    var(--gray-100) 4px,
+    transparent 4px,
+    transparent 8px
+  );
 }

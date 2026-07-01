@@ -104,11 +104,6 @@ export function ButtonPanel() {
         brushStatus={brush}
         onApply={applyToCell}
       />
-
-      <p className={styles.guide}>
-        브러시를 고르고 칸을 누르거나 드래그하면 바로 반영돼요. 같은 칸을 같은 브러시로 다시 누르면 해제돼요.
-        점심(빗금) 칸은 기본 불가예요.
-      </p>
     </div>
   );
 }

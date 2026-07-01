@@ -34,6 +34,12 @@ export interface BrushPaletteProps {
 export function BrushPalette({ brush, onBrush, reason, onReason, otherText, onOtherText }: BrushPaletteProps) {
   return (
     <div className={styles.palette}>
+      {/* 2단계 사용법 안내 — 브러시가 '칠하는 도구'임을 표에 앞서 알린다 */}
+      <div className={styles.head}>
+        <span className={styles.headTitle}>칠할 상태 고르기</span>
+        <span className={styles.headSteps}>① 상태를 고른 뒤 → ② 아래 표의 칸을 클릭·드래그</span>
+      </div>
+
       <div className={styles.brushes} role="group" aria-label="칠할 상태(브러시) 선택">
         {BRUSHES.map((b) => {
           const selected = brush === b.status;
@@ -78,6 +84,22 @@ export function BrushPalette({ brush, onBrush, reason, onReason, otherText, onOt
           )}
         </div>
       )}
+
+      {/* 상태 범례 — 색만이 아니라 아이콘+라벨을 병행 표기 */}
+      <ul className={styles.legend} aria-label="상태 범례">
+        <li>
+          <span className={`${styles.legendIcon} ${styles.available}`} aria-hidden="true">●</span>가능
+        </li>
+        <li>
+          <span className={`${styles.legendIcon} ${styles.avoid}`} aria-hidden="true">▲</span>회피
+        </li>
+        <li>
+          <span className={`${styles.legendIcon} ${styles.unavailable}`} aria-hidden="true">✕</span>불가
+        </li>
+        <li>
+          <span className={`${styles.legendIcon} ${styles.lunchSwatch}`} aria-hidden="true"></span>점심 · 기본 불가(클릭해 변경)
+        </li>
+      </ul>
     </div>
   );
 }

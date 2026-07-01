@@ -29,6 +29,11 @@ const STATUS_CLASS: Record<Availability, string | undefined> = {
   unavailable: styles.unavailable,
 };
 
+/** 슬롯 기본 상태 — 점심블럭은 '불가', 그 외 '가능' */
+function defaultStatusFor(slot: Slot): Availability {
+  return isLunchBlock(slot.blockIndex) ? 'unavailable' : 'available';
+}
+
 export interface SlotGridProps {
   attendeeId: string;
   /** (attendeeId, slot) → 효과적 셀(점심 기본불가 포함). store 파생 lookup */
@@ -60,10 +65,10 @@ export function SlotGrid({ attendeeId, lookup, explicitStatusOf, dayCount, brush
     };
   }, []);
 
-  /** 이 셀에 칠할 target — 명시 상태가 이미 브러시와 같으면 해제(available), 아니면 브러시 적용 */
+  /** 이 셀에 칠할 target — 명시 상태가 브러시와 같으면 기본값으로 해제, 아니면 브러시 적용 */
   function targetFor(slot: Slot): Availability {
     const explicit = explicitStatusOf(attendeeId, slot);
-    return explicit === brushStatus ? 'available' : brushStatus;
+    return explicit === brushStatus ? defaultStatusFor(slot) : brushStatus;
   }
 
   function startPaint(slot: Slot) {
