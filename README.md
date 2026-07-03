@@ -21,6 +21,12 @@ npm run build  # 타입체크(tsc --noEmit) + 프로덕션 빌드 → dist/
 npm test       # Vitest 단위 테스트 (또는 npm run typecheck)
 ```
 
+## 자연어 제약 입력 파서
+
+- 자연어 제약 입력은 기본적으로 **로컬 규칙기반 파서(`nlParser`)**로 동작합니다(백엔드 없이 브라우저에서 즉시 파싱).
+- `VITE_PARSE_ENDPOINT`를 설정하면 **백엔드 프록시를 통해 Claude로 파싱**하며, 프록시 실패(503 등) 시 자동으로 로컬 파서로 폴백합니다.
+- API 키(`ANTHROPIC_API_KEY`)는 **백엔드 서버 env에만 존재**하고 프론트/브라우저에는 절대 노출되지 않습니다. 설정 예시는 [`.env.example`](./.env.example) 참고.
+
 ## 5개 화면 흐름
 
 ```
