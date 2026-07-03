@@ -1,24 +1,68 @@
-/* 참석자 한 행 — 아바타 + 이름 + 필수/선택 토글 */
+/* 참석자 한 행 — 아바타 + 이름 입력 + 필수/선택 토글 + 삭제 */
 .row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   padding: var(--space-3) 0;
 }
 
-.name {
+/* 이름 직접 입력 — 밑줄 포커스 */
+.nameInput {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 1.5px solid transparent;
+  background: transparent;
+  padding: var(--space-1) 0;
+  font-family: inherit;
   font-size: var(--fs-body);
   font-weight: var(--fw-medium);
   color: var(--gray-700);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+
+.nameInput::placeholder {
+  color: var(--gray-300);
+}
+
+.nameInput:focus {
+  outline: none;
+  border-bottom-color: var(--toss-blue);
 }
 
 /* 토글 폭 고정 — 행마다 정렬 일관성 유지 */
 .toggle {
   flex-shrink: 0;
-  width: 128px;
+  width: 112px;
+}
+
+/* 삭제 버튼 */
+.remove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-chip);
+  background: transparent;
+  color: var(--gray-400);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.remove:hover:not(:disabled) {
+  background: var(--status-unavailable-tint);
+  color: var(--status-unavailable);
+}
+
+.remove:disabled {
+  opacity: 0.3;
+  cursor: default;
 }

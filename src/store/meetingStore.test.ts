@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useMeetingStore } from './meetingStore';
+import { useMeetingStore, MIN_ATTENDEES, MAX_ATTENDEES } from './meetingStore';
 import { slotKey, scoreAllCandidates } from '../lib/recommend';
 
 describe('store.setConstraint — 점심 override', () => {
@@ -58,5 +58,80 @@ describe('store.setConstraint — 점심 override', () => {
     expect(
       s.constraints.some((c) => c.attendeeId === attendeeId && c.slot.day === 0 && c.slot.blockIndex === 6),
     ).toBe(false);
+  });
+});
+
+describe('store — 참석자 이름 편집·인원 추가/삭제 (가변 인원)', () => {
+  beforeEach(() => {
+    useMeetingStore.getState().loadScenario(useMeetingStore.getState().scenarioId);
+  });
+
+  it('setAttendeeName 은 이름을 갱신한다 (아바타 이니셜은 파생이라 이름만 반영하면 충분)', () => {
+    const id = useMeetingStore.getState().attendees[0]!.id;
+    useMeetingStore.getState().setAttendeeName(id, '홍길동');
+    const found = useMeetingStore.getState().attendees.find((a) => a.id === id);
+    expect(found?.name).toBe('홍길동');
+  });
+
+  it('addAttendee 는 인원을 1 늘리고 role optional·avatarColor 를 배정하며 후보를 재계산한다', () => {
+    const before = useMeetingStore.getState().attendees.length;
+    useMeetingStore.getState().addAttendee('신입');
+    const s = useMeetingStore.getState();
+    expect(s.attendees.length).toBe(before + 1);
+    const added = s.attendees[s.attendees.length - 1]!;
+    expect(added.name).toBe('신입');
+    expect(added.role).toBe('optional');
+    expect(added.avatarColor).toBeTruthy();
+    // 후보는 배열로 파생되어 있어야 한다(가변 인원에서도 정상 동작)
+    expect(Array.isArray(s.candidates)).toBe(true);
+  });
+
+  it('removeAttendee 는 참석자와 그 참석자의 제약 셀을 함께 제거하고 재계산한다', () => {
+    // 시나리오1: s1-jihun 은 화요일 종일 외근 제약을 가진다
+    const target = 's1-jihun';
+    const hadConstraints = useMeetingStore
+      .getState()
+      .constraints.some((c) => c.attendeeId === target);
+    expect(hadConstraints).toBe(true);
+
+    useMeetingStore.getState().removeAttendee(target);
+    const s = useMeetingStore.getState();
+
+    // 참석자 제거
+    expect(s.attendees.some((a) => a.id === target)).toBe(false);
+    // 정합성 — 그 참석자의 제약 셀도 남아있지 않다
+    expect(s.constraints.some((c) => c.attendeeId === target)).toBe(false);
+    // 남은 참석자만으로 후보가 정상 파생된다
+    expect(
+      scoreAllCandidates(s.attendees, s.constraints, s.config).every((c) =>
+        c.satisfied.concat(c.absent).every((a) => a.id !== target),
+      ),
+    ).toBe(true);
+  });
+
+  it('경계 — 최소 인원 이하로는 삭제 no-op, 최대 인원 초과로는 추가 no-op', () => {
+    // 최소치까지 삭제
+    let guard = 0;
+    while (useMeetingStore.getState().attendees.length > MIN_ATTENDEES && guard < 50) {
+      const id = useMeetingStore.getState().attendees[0]!.id;
+      useMeetingStore.getState().removeAttendee(id);
+      guard += 1;
+    }
+    expect(useMeetingStore.getState().attendees.length).toBe(MIN_ATTENDEES);
+    // 한 번 더 삭제 시도 → no-op
+    const minId = useMeetingStore.getState().attendees[0]!.id;
+    useMeetingStore.getState().removeAttendee(minId);
+    expect(useMeetingStore.getState().attendees.length).toBe(MIN_ATTENDEES);
+
+    // 최대치까지 추가
+    guard = 0;
+    while (useMeetingStore.getState().attendees.length < MAX_ATTENDEES && guard < 50) {
+      useMeetingStore.getState().addAttendee();
+      guard += 1;
+    }
+    expect(useMeetingStore.getState().attendees.length).toBe(MAX_ATTENDEES);
+    // 한 번 더 추가 시도 → no-op
+    useMeetingStore.getState().addAttendee();
+    expect(useMeetingStore.getState().attendees.length).toBe(MAX_ATTENDEES);
   });
 });

@@ -38,6 +38,24 @@ export interface RelaxationSnapshot {
   constraints: ConstraintCell[];
 }
 
+// ===== 참석자 인프라 상수 =====
+
+/** 신규 참석자 아바타 색 팔레트 — 인원 수 기준 순환 배정 (scenarios 시드와 동일 계열) */
+const AVATAR_PALETTE = [
+  '#0064FF',
+  '#7B61FF',
+  '#00C2A8',
+  '#FF6B6B',
+  '#FFB020',
+  '#00C880',
+  '#FF9500',
+  '#22B8CF',
+];
+
+/** 참석자 인원 경계 — 이 밖에서는 추가/삭제 액션이 no-op */
+export const MIN_ATTENDEES = 2;
+export const MAX_ATTENDEES = 12;
+
 // ===== 순수 헬퍼 (init·actions 공유) =====
 
 /** 현재 입력으로 추천 후보를 파생 */
@@ -182,6 +200,12 @@ export interface MeetingState {
   removeRoom: (id: string) => void;
   /** 참석자 역할 변경 후 재계산 */
   setAttendeeRole: (id: string, role: AttendeeRole) => void;
+  /** 참석자 이름 변경 (아바타 이니셜은 이름 첫 글자로 자동 반영) 후 재계산 */
+  setAttendeeName: (id: string, name: string) => void;
+  /** 참석자 추가 — 새 id·기본 role 'optional'·팔레트 순환 색. 최대 인원 초과 시 no-op. 추가 후 재계산 */
+  addAttendee: (name?: string) => void;
+  /** 참석자 삭제 — 해당 참석자의 제약 셀도 함께 제거 후 재계산. 최소 인원 이하이면 no-op */
+  removeAttendee: (id: string) => void;
   /** 제약 셀 추가/교체(available 이면 제거) 후 재계산 */
   setConstraint: (cell: ConstraintCell) => void;
   /** 후보/완화 재계산 (확정 랭킹은 건드리지 않음) */
@@ -270,6 +294,52 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
     const { constraints, config } = get();
     set({
       attendees,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  setAttendeeName: (id, name) => {
+    const attendees = get().attendees.map((a) => (a.id === id ? { ...a, name } : a));
+    const { constraints, config } = get();
+    // 이름은 점수에 영향 없지만, 후보 카드의 참석자 표기를 최신화하기 위해 재파생
+    set({
+      attendees,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  addAttendee: (name) => {
+    const current = get().attendees;
+    if (current.length >= MAX_ATTENDEES) return; // 최대 인원 제한
+    const trimmed = name?.trim();
+    const attendee: Attendee = {
+      id: `attendee-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      name: trimmed && trimmed.length > 0 ? trimmed : `참석자 ${current.length + 1}`,
+      role: 'optional',
+      // 팔레트를 현재 인원 수 기준으로 순환 배정
+      avatarColor: AVATAR_PALETTE[current.length % AVATAR_PALETTE.length],
+    };
+    const attendees = [...current, attendee];
+    const { constraints, config } = get();
+    set({
+      attendees,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+  },
+
+  removeAttendee: (id) => {
+    const current = get().attendees;
+    if (current.length <= MIN_ATTENDEES) return; // 최소 인원 제한
+    const attendees = current.filter((a) => a.id !== id);
+    // 정합성 — 삭제된 참석자의 제약 셀도 함께 제거해 유령 제약이 남지 않게 한다
+    const constraints = get().constraints.filter((c) => c.attendeeId !== id);
+    const { config } = get();
+    set({
+      attendees,
+      constraints,
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
@@ -458,6 +528,9 @@ export const useMeetingActions = (): {
   addRoom: MeetingState['addRoom'];
   removeRoom: MeetingState['removeRoom'];
   setAttendeeRole: MeetingState['setAttendeeRole'];
+  setAttendeeName: MeetingState['setAttendeeName'];
+  addAttendee: MeetingState['addAttendee'];
+  removeAttendee: MeetingState['removeAttendee'];
   setConstraint: MeetingState['setConstraint'];
   recompute: MeetingState['recompute'];
   confirm: MeetingState['confirm'];
@@ -475,6 +548,9 @@ export const useMeetingActions = (): {
       addRoom: s.addRoom,
       removeRoom: s.removeRoom,
       setAttendeeRole: s.setAttendeeRole,
+      setAttendeeName: s.setAttendeeName,
+      addAttendee: s.addAttendee,
+      removeAttendee: s.removeAttendee,
       setConstraint: s.setConstraint,
       recompute: s.recompute,
       confirm: s.confirm,

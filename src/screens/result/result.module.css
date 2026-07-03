@@ -294,35 +294,77 @@
   color: #ffffff;
 }
 
-/* 단일 일자 격자 (모바일 기본) */
-.gridSingle {
+/* 축 전환 격자 — 열=참석자, 행=시간블럭. 세로 스크롤 컨테이너 */
+.axisScroll {
+  max-height: 58vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--gray-100);
+  border-radius: var(--radius-card);
+}
+
+.axisGrid {
   display: grid;
-  /* 라벨 열 + 16개 30분 블럭 */
-  grid-template-columns: 56px repeat(16, 1fr);
+  /* 열 개수는 참석자 수에 따라 인라인 스타일로 지정 (52px 라벨 + N열) */
   gap: 2px;
+  padding: 2px;
 }
 
-.gridFull {
-  display: none;
+/* 좌상단 코너(요일 이니셜) + 참석자 열 헤더 — 스크롤 시 상단 고정 */
+.axisCorner {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-base);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.gridHeadCell,
-.gridRowLabel {
-  font-size: 9px;
+.axisColHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0 4px;
+  min-width: 0;
+}
+
+.axisColName {
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  color: var(--gray-600);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 행 헤더 — 시간 시작시각 라벨 */
+.axisRowHead {
+  font-size: 10px;
   color: var(--gray-400);
   font-weight: var(--fw-semibold);
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 1px 0;
+  justify-content: flex-end;
+  padding-right: var(--space-1);
+  white-space: nowrap;
 }
 
-.gridRowLabel {
-  justify-content: flex-start;
-  padding-left: var(--space-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 축 그리드 셀 — 정사각형 대신 고정 높이(세로로 전체 블럭 표시) */
+.axisGrid .cell {
+  aspect-ratio: auto;
+  width: auto;
+  height: 26px;
+  font-size: 11px;
 }
 
 .cell {
@@ -444,38 +486,13 @@
   margin: 0;
 }
 
-/* ===== 넓은 화면: 전체 격자 표시 ===== */
+/* ===== 넓은 화면: 축 그리드 셀을 조금 키워 여백 활용 ===== */
 @media (min-width: 768px) {
-  .dayTabs,
-  .gridSingle {
-    display: none;
+  .axisScroll {
+    max-height: 520px;
   }
 
-  .gridFull {
-    display: block;
-    overflow-x: auto;
-  }
-
-  .gridFullInner {
-    display: grid;
-    /* 라벨 열 + 5일×16블럭 = 80 */
-    grid-template-columns: 64px repeat(80, 20px);
-    gap: 2px;
-    min-width: max-content;
-  }
-
-  .gridFullInner .cell {
-    width: 20px;
-    height: 20px;
-    aspect-ratio: auto;
-  }
-
-  .dayGroupLabel {
-    grid-column: span 16;
-    font-size: 10px;
-    color: var(--gray-400);
-    font-weight: var(--fw-semibold);
-    text-align: center;
-    padding: var(--space-1) 0;
+  .axisGrid .cell {
+    height: 30px;
   }
 }

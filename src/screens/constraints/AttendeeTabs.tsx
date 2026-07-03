@@ -1,4 +1,4 @@
-/** 참석자 선택 탭 — 가로 스크롤. 한 명 선택해 격자를 편집한다. */
+/** 참석자 선택 탭 — 3열 그리드(줄바꿈). 한 명 선택해 격자를 편집한다. */
 import type { Attendee } from '../../types';
 import { Avatar } from '../../components/ui';
 import styles from './AttendeeTabs.module.css';
@@ -11,7 +11,7 @@ export interface AttendeeTabsProps {
 
 export function AttendeeTabs({ attendees, selectedId, onSelect }: AttendeeTabsProps) {
   return (
-    <div className={styles.scroller} role="tablist" aria-label="참석자 선택">
+    <div className={styles.grid} role="tablist" aria-label="참석자 선택">
       {attendees.map((a) => {
         const selected = a.id === selectedId;
         return (

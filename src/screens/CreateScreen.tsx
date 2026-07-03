@@ -19,9 +19,22 @@ const LOCATION_OPTIONS: SegmentOption<MeetingLocation>[] = [
 export default function CreateScreen() {
   const config = useConfig();
   const attendees = useAttendees();
-  const { setConfig, setDuration, setDateRange, addRoom, removeRoom, setAttendeeRole } =
-    useMeetingActions();
+  const {
+    setConfig,
+    setDuration,
+    setDateRange,
+    addRoom,
+    removeRoom,
+    setAttendeeRole,
+    setAttendeeName,
+    addAttendee,
+    removeAttendee,
+  } = useMeetingActions();
   const navigate = useNavigate();
+
+  // 인원 경계 — 최소 2명·최대 12명 (경계에서 버튼 비활성)
+  const canRemove = attendees.length > 2;
+  const canAdd = attendees.length < 12;
 
   // 필수/선택 인원 요약 — 참석자 변경 시에만 재계산
   const { requiredCount, optionalCount } = useMemo(() => {
@@ -82,7 +95,7 @@ export default function CreateScreen() {
         )}
       </Card>
 
-      {/* 5. 참석자 6명 — 필수/선택 토글 */}
+      {/* 5. 참석자 — 이름 편집·역할 토글·추가/삭제 (최소 2·최대 12명) */}
       <Card className={styles.section}>
         <div className={styles.sectionHead}>
           <span className={styles.sectionTitle}>참석자 {attendees.length}명</span>
@@ -93,9 +106,26 @@ export default function CreateScreen() {
         <p className={styles.hint}>필수: 빠지면 회의 무의미 · 선택: 없어도 회의 성립</p>
         <ul className={styles.attendeeList}>
           {attendees.map((a) => (
-            <AttendeeRow key={a.id} attendee={a} onRoleChange={setAttendeeRole} />
+            <AttendeeRow
+              key={a.id}
+              attendee={a}
+              onRoleChange={setAttendeeRole}
+              onNameChange={setAttendeeName}
+              onRemove={removeAttendee}
+              canRemove={canRemove}
+            />
           ))}
         </ul>
+        <Button
+          variant="secondary"
+          size="md"
+          fullWidth
+          onClick={() => addAttendee()}
+          disabled={!canAdd}
+        >
+          + 참석자 추가
+        </Button>
+        {!canAdd && <p className={styles.hint}>참석자는 최대 12명까지 추가할 수 있어요.</p>}
       </Card>
 
       {/* 6. 하단 CTA */}
