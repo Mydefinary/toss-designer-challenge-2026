@@ -4,6 +4,7 @@ import ConstraintsScreen from './screens/ConstraintsScreen';
 import ResultScreen from './screens/ResultScreen';
 import ConfirmScreen from './screens/ConfirmScreen';
 import OperateScreen from './screens/OperateScreen';
+import SharedView from './screens/shared/SharedView';
 import AppShell from './components/AppShell';
 
 /**
@@ -20,6 +21,8 @@ export default function App() {
       <Route path="/result" element={<ResultScreen />} />
       <Route path="/confirm" element={<ConfirmScreen />} />
       <Route path="/operate" element={<OperateScreen />} />
+      {/* 공유 상황 열람(읽기 전용 + 코멘트) */}
+      <Route path="/shared/:id" element={<SharedView />} />
       {/* catch-all → 생성 화면으로 */}
       <Route path="*" element={<Navigate to="/create" replace />} />
       </Routes>

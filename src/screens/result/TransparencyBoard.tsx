@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Availability, ConstraintCell } from '../../types';
+import type { Attendee, Availability, ConstraintCell } from '../../types';
 import { useAttendees, useConstraints } from '../../store';
 import { Avatar } from '../../components/ui';
 import { dayName, formatBlock, blockStartLabel, isLunchBlock, VALID_BLOCKS } from '../../lib/recommend';
@@ -37,9 +37,22 @@ function reasonOf(cell: ConstraintCell | undefined, status: Availability): strin
   return cell?.reason || cell?.reasonText || '불가';
 }
 
-export default function TransparencyBoard() {
-  const attendees = useAttendees();
-  const constraints = useConstraints();
+interface TransparencyBoardProps {
+  /** 주어지면 store 대신 이 참석자 목록을 사용(공유 열람 등 읽기전용 스냅샷용) */
+  attendees?: Attendee[];
+  /** 주어지면 store 대신 이 제약 목록을 사용 */
+  constraints?: ConstraintCell[];
+}
+
+export default function TransparencyBoard({
+  attendees: attendeesProp,
+  constraints: constraintsProp,
+}: TransparencyBoardProps = {}) {
+  // 훅은 조건 없이 항상 호출하고, props 가 주어지면 그 값으로 대체한다.
+  const storeAttendees = useAttendees();
+  const storeConstraints = useConstraints();
+  const attendees = attendeesProp ?? storeAttendees;
+  const constraints = constraintsProp ?? storeConstraints;
 
   const [expanded, setExpanded] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);

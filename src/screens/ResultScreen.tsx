@@ -11,6 +11,7 @@ import ResultHeader from './result/ResultHeader';
 import RankCard from './result/RankCard';
 import TransparencyBoard from './result/TransparencyBoard';
 import RelaxationPanel from './result/RelaxationPanel';
+import ShareSituation from './result/ShareSituation';
 import styles from './result/result.module.css';
 
 export default function ResultScreen() {
@@ -59,6 +60,8 @@ export default function ResultScreen() {
       </section>
 
       <RelaxationPanel />
+
+      <ShareSituation />
 
       <div className={styles.bottomBar}>
         {isEmpty && (

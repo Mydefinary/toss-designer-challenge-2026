@@ -465,6 +465,61 @@
   justify-content: flex-end;
 }
 
+/* ===== 상황 공유 카드 ===== */
+.shareSituationCard {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shareSituationDesc {
+  font-size: var(--fs-caption);
+  color: var(--gray-600);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.shareSituationHint {
+  font-size: var(--fs-caption);
+  color: var(--status-unavailable);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-chip);
+  padding: var(--space-2) var(--space-3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.shareSituationLink {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-chip);
+  padding: var(--space-3);
+  margin: 0;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.shareToast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-7);
+  transform: translateX(-50%);
+  z-index: 50;
+  background: var(--toss-gray);
+  color: #ffffff;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--space-6));
+}
+
 /* ===== 하단 고정 확정 버튼 ===== */
 .bottomBar {
   position: sticky;
