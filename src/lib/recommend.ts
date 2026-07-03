@@ -22,8 +22,6 @@ export const W_REQUIRED = 3;
 export const W_OPTIONAL = 1;
 export const SAT_AVAILABLE = 1;
 export const SAT_AVOID = -0.5;
-/** 오프라인인데 점유 블럭 전부 가용한 회의실이 0개 → 장소부재 패널티 */
-export const ROOM_PENALTY = -5;
 
 // ===== 블럭/업무시간 정의 =====
 const DAY_NAMES = ['월', '화', '수', '목', '금'];
@@ -250,14 +248,13 @@ function scoreCandidate(
     }
   }
 
-  // 장소 평가
+  // 장소 평가 (V3) — 오프라인은 점유블럭 전체를 커버하는 회의실이 필수(Hard). 없으면 후보 제외.
   let room: Room | undefined;
-  let roomAvailable = true;
   if (config.location === 'offline') {
     room = findRoom(config.rooms, day, blocks);
-    roomAvailable = room !== undefined;
-    if (!roomAvailable) score += ROOM_PENALTY; // 장소부재 패널티
+    if (!room) return null; // 회의실 부재 → 오프라인 회의 성립 불가(후보 제외)
   }
+  const roomAvailable = true; // 온라인(장소무관)이거나 오프라인이면 커버 회의실 확보됨 → 항상 true
 
   const conflictCount = yielding.length + absent.length;
 
@@ -397,10 +394,11 @@ export function recommend(
 // 제약 완화 제안 (PRD 3.5.1) — 풀버전
 // ============================================================
 
-/** 완화 부담 비용 — 불가 > 회피 > 선택자제외 > 온라인전환 */
+/** 완화 부담 비용 — 불가 > 회피 > 회의실확보 > 선택자제외 > 온라인전환 */
 const RELAX_COST: Record<RelaxationType, number> = {
   'adjust-hard': 4,
   'ignore-avoid': 3,
+  'secure-room': 2,
   'exclude-optional': 2,
   'switch-online': 1,
 };
@@ -430,6 +428,11 @@ function withCellStatus(
       ? { ...cell, status, reason: undefined, reasonText: undefined }
       : cell,
   );
+}
+
+/** 완화 평가용 가상 회의실 — 기간 내 전 유효블럭 가용. 오프라인을 유지한 채 회의실만 확보한 상황을 모사 */
+function fullAvailabilityRoom(config: MeetingConfig): Room {
+  return { id: 'relax-secured-room', name: '확보한 회의실', available: generateSlots(config).map((s) => slotKey(s)) };
 }
 
 /** 4가지 유형의 개별 완화 액션 전부 생성 */
@@ -472,8 +475,16 @@ function buildActions(input: RelaxInputs): InternalAction[] {
     }
   }
 
-  // (4) 온라인 전환
+  // (4) 회의실 확보 (오프라인 유지) + 온라인 전환 — 오프라인일 때만 의미 있음
   if (config.location === 'offline') {
+    actions.push({
+      type: 'secure-room',
+      target: {},
+      apply: (inp) => ({
+        ...inp,
+        config: { ...inp.config, rooms: [...inp.config.rooms, fullAvailabilityRoom(inp.config)] },
+      }),
+    });
     actions.push({
       type: 'switch-online',
       target: {},
@@ -519,6 +530,8 @@ function actionSubject(action: InternalAction): string {
       return `${t.attendeeName ?? '참석자'}님의 회피(${t.slot ? formatBlock(t.slot) : ''})를 양보로 전환`;
     case 'adjust-hard':
       return `${t.attendeeName ?? '참석자'}님의 불가(${t.reason ?? ''} · ${t.slot ? formatBlock(t.slot) : ''})를 조정`;
+    case 'secure-room':
+      return '회의실 추가 확보(오프라인 유지)';
     case 'switch-online':
       return '오프라인 → 온라인 전환(회의실 제약 제거)';
   }

@@ -9,7 +9,6 @@ import {
   W_OPTIONAL,
   SAT_AVAILABLE,
   SAT_AVOID,
-  ROOM_PENALTY,
 } from '../../lib/recommend';
 import { signed } from './constants';
 import styles from './result.module.css';
@@ -47,11 +46,6 @@ function buildLines(candidate: RankedCandidate): BreakdownLine[] {
   // 불참(선택자 불가) — 점수 기여 없음
   for (const a of candidate.absent) {
     lines.push({ text: `${a.name} 불참`, value: '±0', tone: 'zero' });
-  }
-
-  // 회의실 부재 패널티
-  if (!candidate.roomAvailable) {
-    lines.push({ text: '회의실 없음', value: signed(ROOM_PENALTY), tone: 'room' });
   }
 
   return lines;

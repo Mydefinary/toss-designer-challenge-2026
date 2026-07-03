@@ -87,7 +87,7 @@ export interface RankedCandidate {
   absent: Attendee[];
   /** 오프라인일 때 점유 블럭 전부에 가용한 회의실(첫 매칭). 온라인이면 undefined */
   room?: Room;
-  /** 온라인이거나, 오프라인이면 점유 블럭 전부 가용한 회의실 ≥1 */
+  /** 온라인(장소무관)이거나, 오프라인이면 점유 블럭 전체를 커버하는 회의실이 확보됨. 후보로 남는 조건이라 항상 true */
   roomAvailable: boolean;
   /** 1..n */
   rank: number;
@@ -98,6 +98,7 @@ export type RelaxationType =
   | 'exclude-optional' // 선택자 제외
   | 'ignore-avoid' // 회피 무시(양보 전환)
   | 'adjust-hard' // 불가 부분 조정
+  | 'secure-room' // 회의실 확보(오프라인 유지, 전 블럭 가용 회의실 추가)
   | 'switch-online'; // 온라인 전환
 
 /** 제약 완화 제안 (3.5.1) */

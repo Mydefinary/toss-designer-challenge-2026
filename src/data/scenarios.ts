@@ -195,7 +195,7 @@ const s4Rooms: Room[] = [{ id: 's4-room', name: '회의실 단독', available: r
 const scenario4: Scenario = {
   id: 'scenario-4',
   name: '장소 병목',
-  purpose: '시간 제약은 느슨하지만 회의실이 부족해 장소가 결정 요인이 되는 V3 강조 케이스',
+  purpose: '오프라인인데 회의실이 월요일 오전에만 있어 후보가 그 시간대로 좁혀지는 V3 강조 케이스. 완화에서 온라인 전환·회의실 확보가 병목을 푼다',
   config: { title: '전사 타운홀 준비 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s4Rooms },
   attendees: s4Attendees,
   rooms: s4Rooms,

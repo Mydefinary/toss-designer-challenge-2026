@@ -149,6 +149,16 @@ function applyOneRelaxation(
           : constraints;
       return { attendees, constraints: nextConstraints, config };
     }
+    case 'secure-room': {
+      // 오프라인 유지하며 전 유효블럭 가용한 회의실 1개 확보
+      const available = generateSlots(config).map((s) => slotKey(s));
+      const room: Room = {
+        id: `room-secured-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+        name: '확보한 회의실',
+        available,
+      };
+      return { attendees, constraints, config: { ...config, rooms: [...config.rooms, room] } };
+    }
     case 'switch-online': {
       // 온라인 전환
       return { attendees, constraints, config: { ...config, location: 'online' } };

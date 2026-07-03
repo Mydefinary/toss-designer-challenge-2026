@@ -44,7 +44,7 @@ export default function ConfirmScreen() {
   return (
     <div className={styles.screen}>
       <header>
-        <h1 className={styles.title}>일정이 확정됐어요</h1>
+        <h1 className={styles.title}>최적 일정을 결정했어요</h1>
         <p className={styles.subtitle}>
           {config.title} · {meta.name}
         </p>
@@ -53,7 +53,7 @@ export default function ConfirmScreen() {
       <section className={styles.section} aria-label="확정 순위">
         <Card emphasized className={styles.topCard}>
           <div className={styles.topLabelRow}>
-            <span className={styles.topBadge}>1순위 확정</span>
+            <span className={styles.topBadge}>최적 1순위</span>
             <Badge tone="success" icon="●">
               {top.satisfied.length}명 참석
             </Badge>
