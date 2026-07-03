@@ -100,10 +100,10 @@ export default function CreateScreen() {
         <div className={styles.sectionHead}>
           <span className={styles.sectionTitle}>참석자 {attendees.length}명</span>
           <Badge tone="neutral">
-            필수 {requiredCount}명 · 선택 {optionalCount}명
+            필수참석 {requiredCount}명 · 선택참석 {optionalCount}명
           </Badge>
         </div>
-        <p className={styles.hint}>필수: 빠지면 회의 무의미 · 선택: 없어도 회의 성립</p>
+        <p className={styles.hint}>필수참석: 빠지면 회의 무의미 · 선택참석: 없어도 회의 성립</p>
         <ul className={styles.attendeeList}>
           {attendees.map((a) => (
             <AttendeeRow

@@ -20,6 +20,8 @@
   font-weight: var(--fw-medium);
   color: var(--gray-500);
   cursor: pointer;
+  /* 4글자 라벨("필수참석"/"선택참석")이 줄바꿈되지 않게 */
+  white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -40,8 +42,9 @@
   outline-offset: 2px;
 }
 
-/* 컴팩트 변형 — 참석자 행의 필수/선택 토글용 */
+/* 컴팩트 변형 — 참석자 행의 필수참석/선택참석 토글용.
+   4글자 라벨을 좁은 폭에서도 한 줄로 담기 위해 좌우 패딩을 줄인다 */
 .sm {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-1);
   font-size: var(--fs-caption);
 }

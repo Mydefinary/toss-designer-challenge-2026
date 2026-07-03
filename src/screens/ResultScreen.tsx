@@ -11,7 +11,7 @@ import ResultHeader from './result/ResultHeader';
 import RankCard from './result/RankCard';
 import TransparencyBoard from './result/TransparencyBoard';
 import RelaxationPanel from './result/RelaxationPanel';
-import ShareSituation from './result/ShareSituation';
+import ShareButton from './result/ShareButton';
 import styles from './result/result.module.css';
 
 export default function ResultScreen() {
@@ -36,7 +36,10 @@ export default function ResultScreen() {
 
       {!isEmpty && (
         <section className={styles.section} aria-label="추천 순위">
-          <h2 className={styles.sectionTitle}>추천 시간 {candidates.length}순위</h2>
+          <div className={styles.rankHeader}>
+            <h2 className={styles.sectionTitle}>추천 시간 {candidates.length}순위</h2>
+            <ShareButton />
+          </div>
           <div className={styles.rankList}>
             {candidates.map((c) => (
               <RankCard
@@ -60,8 +63,6 @@ export default function ResultScreen() {
       </section>
 
       <RelaxationPanel />
-
-      <ShareSituation />
 
       <div className={styles.bottomBar}>
         {isEmpty && (

@@ -56,6 +56,14 @@
   margin: 0;
 }
 
+/* ===== 순위 헤더 (제목 좌 · 저장 공유 버튼 우) ===== */
+.rankHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
 /* ===== 순위 카드 ===== */
 .rankList {
   display: flex;

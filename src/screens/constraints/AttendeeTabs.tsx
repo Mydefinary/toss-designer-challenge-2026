@@ -25,7 +25,7 @@ export function AttendeeTabs({ attendees, selectedId, onSelect }: AttendeeTabsPr
           >
             <Avatar name={a.name} avatarColor={a.avatarColor} size="sm" />
             <span className={styles.name}>{a.name}</span>
-            <span className={styles.role}>{a.role === 'required' ? '필수' : '선택'}</span>
+            <span className={styles.role}>{a.role === 'required' ? '필수참석' : '선택참석'}</span>
           </button>
         );
       })}

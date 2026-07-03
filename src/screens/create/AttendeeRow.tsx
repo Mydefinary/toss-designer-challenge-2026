@@ -5,8 +5,8 @@ import { SegmentToggle, type SegmentOption } from './SegmentToggle';
 import styles from './AttendeeRow.module.css';
 
 const ROLE_OPTIONS: SegmentOption<AttendeeRole>[] = [
-  { value: 'required', label: '필수' },
-  { value: 'optional', label: '선택' },
+  { value: 'required', label: '필수참석' },
+  { value: 'optional', label: '선택참석' },
 ];
 
 export interface AttendeeRowProps {

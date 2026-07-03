@@ -150,7 +150,7 @@ export default function TransparencyBoard({
             {dayName(selectedDay).charAt(0)}
           </span>
           {attendees.map((a) => (
-            <span key={`ch-${a.id}`} className={styles.axisColHead} title={`${a.name} · ${a.role === 'required' ? '필수' : '선택'}`}>
+            <span key={`ch-${a.id}`} className={styles.axisColHead} title={`${a.name} · ${a.role === 'required' ? '필수참석' : '선택참석'}`}>
               <Avatar name={a.name} avatarColor={a.avatarColor} size="sm" />
               <span className={styles.axisColName}>{a.name}</span>
             </span>

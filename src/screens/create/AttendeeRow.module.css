@@ -31,10 +31,11 @@
   border-bottom-color: var(--toss-blue);
 }
 
-/* 토글 폭 고정 — 행마다 정렬 일관성 유지 */
+/* 토글 폭 고정 — 행마다 정렬 일관성 유지.
+   4글자 라벨("필수참석"/"선택참석") 두 칸을 한 줄로 담도록 폭 확보 */
 .toggle {
   flex-shrink: 0;
-  width: 112px;
+  width: 132px;
 }
 
 /* 삭제 버튼 */
