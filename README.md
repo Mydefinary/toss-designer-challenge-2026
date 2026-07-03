@@ -6,7 +6,7 @@
 
 ## 기술 스택
 
-- **React + Vite + TypeScript** — 빠른 프로토타이핑, GitHub Pages 배포 용이
+- **React + Vite + TypeScript** — 빠른 프로토타이핑, 정적 빌드(`dist/`)를 경로(`/meetsync`)로 서빙
 - **Zustand** — 백엔드 없는 클라이언트 상태 관리
 - **react-router-dom (HashRouter)** — 정적 호스팅에서도 동작하는 해시 기반 라우팅
 - **CSS Modules + 디자인 토큰** — 토스풍 디자인 토큰(토스 블루 #0064FF 등) 관리
@@ -23,15 +23,16 @@ npm test       # Vitest 단위 테스트 (또는 npm run typecheck)
 
 ## 자연어 제약 입력 파서
 
-- 자연어 제약 입력은 기본적으로 **로컬 규칙기반 파서(`nlParser`)**로 동작합니다(백엔드 없이 브라우저에서 즉시 파싱).
-- `VITE_PARSE_ENDPOINT`를 설정하면 **백엔드 프록시를 통해 Claude로 파싱**하며, 프록시 실패(503 등) 시 자동으로 로컬 파서로 폴백합니다.
+- 경로/same-origin 배포에서는 자연어 제약 입력이 **same-origin 상대경로 `/api/meetsync/parse-constraints`**로 백엔드 프록시를 호출해 **Claude로 파싱**합니다(별도 env 설정 불필요).
+- 프록시가 실패(503 등)하거나 비정상 응답이면 **로컬 규칙기반 파서(`nlParser`)로 자동 폴백**합니다(백엔드 없이 브라우저에서 즉시 파싱). 즉 백엔드가 없어도 파서는 항상 동작합니다.
+- `VITE_PARSE_ENDPOINT`(deprecated)를 지정하면 해당 절대 URL로 오버라이드할 수 있습니다(하위호환).
 - API 키(`ANTHROPIC_API_KEY`)는 **백엔드 서버 env에만 존재**하고 프론트/브라우저에는 절대 노출되지 않습니다. 설정 예시는 [`.env.example`](./.env.example) 참고.
 
 ## 상황 공유 + 코멘트
 
 - **화면3(추천 결과)** 하단의 **"이 상황 공유하기"** 버튼은 현재 검토 중인 상황(1~5순위 후보 + 모두의 상황 히트맵 + 참석자·제약·설정)을 스냅샷으로 백엔드에 저장하고 공유 링크(`#/shared/:id`)를 만들어 클립보드에 복사합니다. 이는 화면4의 '확정 결과 공유'와 달리 **아직 확정 전 검토 상태**를 그대로 보여주는 용도입니다.
 - **`/shared/:id`** 링크를 연 사람은 **읽기 전용**으로 열람합니다(재계산 없이 스냅샷 값 그대로). 순위 카드는 점수 근거 드릴다운을 펼쳐볼 수 있고, 각 순위에 **👍/👎** 의사표현과 **코멘트**(순위별 또는 전체)를 남길 수 있습니다. 표시 이름은 `localStorage`(`meetsync.commentAuthor`)에 저장돼 다음에 프리필됩니다.
-- 이 기능은 백엔드 base URL(`VITE_API_BASE`)이 설정된 경우에만 활성화됩니다. **미설정 시** 공유 버튼은 비활성("백엔드 연결이 필요해요")이 되고, 그 외 모든 화면은 백엔드 없이 정상 동작합니다. 설정 예시는 [`.env.example`](./.env.example) 참고.
+- 경로/same-origin 배포에서는 공유 기능이 **same-origin 상대경로 `/api/meetsync/shares*`**로 백엔드를 호출하므로 별도 env 설정 없이 활성화됩니다. 백엔드가 없거나 응답이 실패하면 해당 요청이 에러 UI로 처리되고, 그 외 모든 화면은 백엔드 없이 정상 동작합니다. 다른 오리진 백엔드를 쓸 때만 `VITE_API_BASE`에 절대 URL을 지정합니다. 설정 예시는 [`.env.example`](./.env.example) 참고.
 
 ## 5개 화면 흐름
 
@@ -57,11 +58,31 @@ npm test       # Vitest 단위 테스트 (또는 npm run typecheck)
 | 4 | **장소 병목** | 시간은 OK인데 회의실이 부족해 장소가 결정 요인이 되는 케이스 |
 | 5 | **이슈 대응 (다음 순위)** | 확정 후 1순위가 무너졌을 때 다음 순위 이동이 매끄럽게 동작 |
 
-## 배포
+## 배포 (경로 `/meetsync`)
 
-GitHub Pages + GitHub Actions로 자동 배포합니다. `main` 브랜치에 push하면 [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml)이 build 후 Pages에 게시합니다.
+MEETSYNC는 별도 도메인이 아니라 **기존 사이트의 경로 `/meetsync`** 아래에 서빙합니다(예: `https://lowpolitics.com/meetsync/`). 백엔드 API는 **같은 오리진의 `/api/meetsync/*`**(정치불신 FastAPI, nginx가 `/api`를 백엔드로 프록시)를 호출하므로 same-origin이라 CORS가 필요 없습니다.
 
-> **주의 — base 경로:** HashRouter라 서브경로 라우팅 자체는 동작하지만, **프로젝트 페이지**(`https://<user>.github.io/<REPO>/`)로 배포하면 에셋 경로 때문에 `vite.config.ts`의 `base`를 `'/<REPO>/'`로 설정해야 합니다(현재 주석 처리됨). **루트/사용자 페이지**(`<user>.github.io`)로 배포하면 불필요합니다.
+**(a) 빌드 & 서빙**
+
+```bash
+npm run build   # 프로덕션 base '/meetsync/' 로 빌드 → dist/ (asset 경로가 /meetsync/assets/... 로 생성됨)
+```
+
+빌드된 `dist/`를 기존 사이트의 `/meetsync/` 경로로 서빙합니다(정적 파일 복사, 예: `/var/www/meetsync/`).
+
+**(b) nginx 예시** (정치불신 frontend nginx.conf를 직접 수정하지 말고 예시로만 참고)
+
+```nginx
+location /meetsync/ {
+    alias /var/www/meetsync/;
+    try_files $uri $uri/ /meetsync/index.html;
+}
+# /api 는 기존대로 백엔드로 프록시되어 same-origin 유지 (별도 CORS 불필요)
+```
+
+> HashRouter라 서브경로 라우팅 자체는 base와 무관하게 동작하지만, asset(js/css) 경로 때문에 `vite.config.ts`의 `base`가 프로덕션에서 `'/meetsync/'`로 설정되어 있습니다(개발은 `'/'`). 로컬 dev는 `server.proxy`가 `/api` → `http://localhost:8000`으로 프록시해 same-origin처럼 동작합니다.
+
+**(c) 백엔드** — 마이그레이션 및 env(`ANTHROPIC_API_KEY` 등) 설정은 `정치불신 docs/MEETSYNC_PROXY.md`를 참고하세요.
 
 ## 제출물
 

@@ -1,8 +1,9 @@
 /**
  * 자연어 제약 파서 — 서버 프록시 우선 + 로컬 규칙기반 폴백 (PRD 3.8).
- * VITE_PARSE_ENDPOINT 가 설정되어 있으면 해당 백엔드로 제약 텍스트를 POST 하여
- * 서버가 Claude 로 구조화 파싱한 결과를 받는다(API 키는 백엔드 env 에만 존재, 브라우저 미노출).
- * 엔드포인트가 없거나 프록시가 실패(503 등)/파싱 오류면 nlParser 의 동기 규칙기반 결과로 폴백한다.
+ * 경로/same-origin 배포 전제: 기본은 상대경로 '(VITE_API_BASE ?? '') + /api/meetsync/parse-constraints'
+ * 로 POST 하여 서버가 Claude 로 구조화 파싱한 결과를 받는다(API 키는 백엔드 env 에만 존재, 브라우저 미노출).
+ * VITE_PARSE_ENDPOINT 가 설정돼 있으면 해당 절대 URL 을 우선 사용한다(하위호환).
+ * 프록시가 실패(503 등)/비정상 응답/파싱 오류면 nlParser 의 동기 규칙기반 결과로 폴백한다.
  * 새 npm 의존성 없이 fetch 만 사용하며, 예외가 UI 로 전파되지 않도록 전부 감싼다.
  */
 import type { Attendee, Availability, ConstraintCell, MeetingConfig, UnavailableReason } from '../types';
@@ -70,11 +71,11 @@ export async function parseConstraints(
   attendees: Attendee[],
   config: MeetingConfig,
 ): Promise<ParseResult> {
-  const endpoint = import.meta.env.VITE_PARSE_ENDPOINT;
-  if (!endpoint) {
-    // 엔드포인트 없음 → 즉시 로컬 폴백
-    return parseLocal(text, attendees, config);
-  }
+  // VITE_PARSE_ENDPOINT(하위호환) 우선, 없으면 same-origin 상대경로.
+  // VITE_API_BASE 가 설정돼 있으면 절대 URL, 기본은 '' → same-origin 상대 호출.
+  const override = import.meta.env.VITE_PARSE_ENDPOINT;
+  const apiBase = (import.meta.env.VITE_API_BASE ?? '').trim().replace(/\/+$/, '');
+  const endpoint = override && override.trim() !== '' ? override.trim() : `${apiBase}/api/meetsync/parse-constraints`;
 
   try {
     const res = await fetch(endpoint, {

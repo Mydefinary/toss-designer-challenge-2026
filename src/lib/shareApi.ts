@@ -1,7 +1,8 @@
 /**
  * 상황 공유 + 코멘트 백엔드 API 클라이언트.
- * base URL 은 import.meta.env.VITE_API_BASE 에서 읽는다. 미설정이면 공유 기능은 비활성이며,
- * getBase() 호출 시 명확한 에러를 던져 UI 가 "백엔드 연결 필요"로 안내하도록 한다.
+ * 경로/same-origin 배포 전제: 기본은 상대경로(base '')로 '/api/meetsync/*' 를 호출한다.
+ * (nginx 가 /api 를 백엔드로 프록시 → CORS 불필요). VITE_API_BASE 를 명시하면 절대 URL 도
+ * 여전히 사용 가능하다(다른 오리진 백엔드용 하위호환).
  * 모든 응답은 non-2xx 시 상태코드/본문을 담은 Error 를 던진다(404 는 message 에 '404' 포함).
  */
 
@@ -32,20 +33,23 @@ export interface CommentInput {
 
 /**
  * base URL 을 읽어 trailing slash 를 제거해 반환.
- * 미설정/빈 문자열이면 명확한 한국어 에러를 던진다.
+ * 미설정/빈 문자열이면 '' (상대경로)를 반환한다 → same-origin 으로 '/api/meetsync/*' 호출.
+ * VITE_API_BASE 가 설정돼 있으면 해당 절대 URL 을 사용한다(하위호환).
  */
 function getBase(): string {
   const raw = import.meta.env.VITE_API_BASE;
   if (!raw || raw.trim() === '') {
-    throw new Error('공유 기능은 백엔드 연결이 필요합니다. VITE_API_BASE를 설정하세요.');
+    return '';
   }
   return raw.trim().replace(/\/+$/, '');
 }
 
-/** VITE_API_BASE 가 truthy 하면 공유 기능 활성 */
+/**
+ * 공유 기능 활성 여부. 경로/same-origin 배포에서는 상대경로로 항상 사용 가능하므로 true.
+ * 네트워크 실패(백엔드 미가동 등)는 request() 가 Error 로 던져 UI 가 에러로 처리한다.
+ */
 export function isShareEnabled(): boolean {
-  const raw = import.meta.env.VITE_API_BASE;
-  return typeof raw === 'string' && raw.trim() !== '';
+  return true;
 }
 
 /**
