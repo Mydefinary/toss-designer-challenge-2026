@@ -12,3 +12,8 @@ server/.env
 __pycache__/
 *.pyc
 server/.venv/
+
+# 내부 운영/개발 문서 (public repo 비노출)
+배포_TODO.md
+작업내역/
+질문내용.md

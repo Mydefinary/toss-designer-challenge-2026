@@ -20,7 +20,7 @@
 
 - **프론트엔드** — React + Vite + TypeScript(strict) + **Zustand** 전역 스토어. HashRouter로 회의별 URL(`/#/m/:id/*`) 라우팅. CSS Modules + 토스풍 디자인 토큰.
 - **백엔드** — **독립 FastAPI 서버**(`server/`, 포트 8010). 회의/프리셋 CRUD, 공유·코멘트, 자연어 파서·대안 제안 Anthropic 프록시, **WebSocket 실시간 편집**을 제공. 기동 시 `create_all`로 테이블 자동 생성.
-- **DB** — 정치불신(lowpolitics) MariaDB 컨테이너를 재사용하되 **별도 database `meetsync`**로 완전히 분리.
+- **DB** — 기존 호스팅 MariaDB를 재사용하되 **별도 database `meetsync`**로 완전히 분리.
 - **배포** — 기존 사이트의 **경로 `/meetsync`** 아래에 서빙(same-origin). 공개 URL: **`https://lowpolitics.com/meetsync/`**.
 
 ## 주요 기능
@@ -90,10 +90,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload
 
 ## 배포 (경로 `/meetsync`)
 
-MEETSYNC는 별도 도메인이 아니라 **기존 사이트(정치불신/lowpolitics)의 경로 `/meetsync`** 아래에 서빙합니다. 백엔드 API는 **같은 오리진의 `/api/meetsync/*`**를 호출하므로 same-origin이라 CORS가 필요 없습니다.
+MEETSYNC는 별도 도메인이 아니라 **기존 호스팅 사이트의 경로 `/meetsync`** 아래에 서빙합니다. 백엔드 API는 **같은 오리진의 `/api/meetsync/*`**를 호출하므로 same-origin이라 CORS가 필요 없습니다.
 
-- **정적 서빙** — `npm run build`로 `base '/meetsync/'` 빌드 → `dist/`를 `/meetsync/`로 서빙. 정치불신 frontend 이미지 빌드 시 MEETSYNC `dist/`를 함께 베이크해 서빙합니다.
-- **백엔드 서비스** — 정치불신 `docker-compose.yml`에 `meetsync-backend` 서비스(이 repo의 `server/`)를 추가해 8010에서 기동. 기존 도커 스택을 재사용합니다.
+- **정적 서빙** — `npm run build`로 `base '/meetsync/'` 빌드 → `dist/`를 `/meetsync/`로 서빙. 기존 프론트엔드 이미지 빌드 시 MEETSYNC `dist/`를 함께 베이크해 서빙합니다.
+- **백엔드 서비스** — 기존 `docker-compose.yml`에 `meetsync-backend` 서비스(이 repo의 `server/`)를 추가해 8010에서 기동. 기존 도커 스택을 재사용합니다.
 - **nginx** — `/meetsync/`(정적) · `/api/meetsync/*`(→ 8010) · `/api/meetsync/meetings/:id/ws`(WebSocket 업그레이드) 프록시.
 
 ```nginx

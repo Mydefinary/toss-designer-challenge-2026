@@ -1,9 +1,8 @@
 # MEETSYNC 백엔드 (독립 FastAPI)
 
-MEETSYNC 전용 백엔드. 이전에는 정치불신(lowpolitics) 백엔드(포트 8000)에 얹혀
-있었으나, 이를 떼어내 **포트 8010**에서 도는 독립 서비스로 분리했다. DB 는
-정치불신 MariaDB 컨테이너(`127.0.0.1:3306`)를 재사용하되 **별도 database
-`meetsync`** 를 사용해 lowpolitics DB 와 완전히 분리한다.
+MEETSYNC 전용 백엔드. **포트 8010**에서 도는 독립 서비스다. DB는
+기존 호스팅 MariaDB를 재사용하되 **별도 database `meetsync`** 를 사용해
+기존 DB와 완전히 분리한다.
 
 ## 구조
 
@@ -25,7 +24,7 @@ server/
 
 ## 엔드포인트 (prefix `/api/meetsync`)
 
-정치불신과 동일 계약 유지.
+엔드포인트 목록:
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
@@ -45,21 +44,23 @@ server/
 
 ### 1) DB 준비 (최초 1회) — MariaDB 에 database + 계정 생성
 
-정치불신 MariaDB 컨테이너에 접속해 아래 SQL 을 실행한다. `meetsync` database 를
-만들고(테이블은 서버 기동 시 `create_all` 로 자동 생성), 전용 계정을 부여한다.
+MariaDB 에 `meetsync` database 와 접근 계정을 준비한다(자세한 절차는 배포
+환경에 맞게 조정). 테이블은 서버 기동 시 `create_all` 로 자동 생성된다.
+
+예시(일반적인 MariaDB 설정):
 
 ```sql
 CREATE DATABASE IF NOT EXISTS meetsync
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- 전용 계정을 새로 만들 경우(권장). 비밀번호는 실제 값으로 교체.
+-- 전용 계정 생성(권장). 비밀번호는 실제 값으로 교체.
 CREATE USER IF NOT EXISTS 'meetsync'@'%' IDENTIFIED BY '<password>';
 GRANT ALL PRIVILEGES ON meetsync.* TO 'meetsync'@'%';
 FLUSH PRIVILEGES;
 ```
 
-> 정치불신과 동일 계정을 재사용해도 되지만, 그 계정이 `meetsync.*` 에 접근
-> 권한이 있어야 한다. database 이름은 반드시 `meetsync`.
+> database 이름은 반드시 `meetsync`. 기존 계정을 재사용할 경우 `meetsync.*`
+> 접근 권한이 있어야 한다.
 
 ### 2) env 설정
 
@@ -97,7 +98,7 @@ cd server
 docker compose up --build   # 8010 노출
 ```
 
-DB 접속 방식(호스트 포트 vs 정치불신 네트워크 합류)은 `docker-compose.yml`
+DB 접속 방식(호스트 포트 vs 기존 도커 네트워크 합류)은 `docker-compose.yml`
 상단 주석 참고. 컨테이너에서 호스트 MariaDB 로 나갈 때는 `DATABASE_URL` 의
 host 를 `host.docker.internal` 로 바꾼다.
 
