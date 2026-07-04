@@ -1,0 +1,131 @@
+/* 회의 목록(홈) 화면 — 토큰만 사용 */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-bottom: var(--space-6);
+}
+
+/* ===== 헤더 ===== */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.headerTitle {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+  margin: 0;
+}
+
+.headerSubtitle {
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  margin: 0;
+}
+
+/* ===== 섹션 제목 ===== */
+.sectionTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+}
+
+/* ===== 회의 카드 리스트 ===== */
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.meetingCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.meetingTitle {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-gray);
+}
+
+.meetingDates {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.meetingCardPending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.meetingPendingLabel {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-blue);
+}
+
+/* ===== 생성 컨트롤 ===== */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.exampleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ===== 상태 표시 ===== */
+.stateBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.errorText {
+  font-size: var(--fs-caption);
+  color: var(--status-unavailable);
+  margin: 0;
+}
+
+.hint {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ===== 토스트 ===== */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-7);
+  transform: translateX(-50%);
+  z-index: 50;
+  background: var(--toss-gray);
+  color: #ffffff;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-card);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--space-6));
+}

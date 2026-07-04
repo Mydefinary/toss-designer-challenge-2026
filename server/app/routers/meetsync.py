@@ -15,20 +15,26 @@ import json
 import logging
 import re
 import secrets
+from datetime import datetime
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import MeetsyncComment, MeetsyncShare
+from app.models import Meeting, MeetsyncComment, MeetsyncShare
 from app.schemas import (
     CommentIn,
     CommentOut,
     CommentsOut,
     ConstraintCell,
+    MeetingCreateIn,
+    MeetingListItem,
+    MeetingListOut,
+    MeetingOut,
+    MeetingUpdateIn,
     ParseConstraintsRequest,
     ParseConstraintsResponse,
     ShareCreateIn,
@@ -303,3 +309,138 @@ def list_comments(
         .order_by(MeetsyncComment.id.asc())
     ).scalars().all()
     return CommentsOut(comments=list(rows))  # type: ignore[arg-type]
+
+
+# ── 회의(Meeting) 저장·목록 ──────────────────────────────
+
+
+@router.post("/meetings")
+def create_meeting(
+    payload: MeetingCreateIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """회의를 저장하고 회의 ID를 발급. 소유 토큰으로 목록/삭제 권한을 구분한다."""
+    owner = payload.ownerToken.strip()
+    if not owner:
+        raise HTTPException(status_code=400, detail="ownerToken이 필요합니다")
+
+    data = payload.data if payload.data is not None else {}
+    serialized = json.dumps(data, ensure_ascii=False)
+    if len(serialized) > 1_000_000:
+        raise HTTPException(status_code=413, detail="회의 데이터가 너무 큽니다")
+
+    title = (payload.title or "").strip() or "제목 없는 회의"
+    if len(title) > 120:
+        raise HTTPException(status_code=400, detail="제목이 너무 깁니다")
+
+    # 회의 ID 발급. 충돌 시 재생성(create_share와 동일 패턴).
+    token = ""
+    for _ in range(10):
+        candidate = secrets.token_urlsafe(9)
+        if db.get(Meeting, candidate) is None:
+            token = candidate
+            break
+    if not token:
+        raise HTTPException(status_code=500, detail="회의 ID 생성에 실패했습니다")
+
+    meeting = Meeting(id=token, owner_token=owner, title=title, data=data)
+    db.add(meeting)
+    db.commit()
+    return {"id": token}
+
+
+@router.get("/meetings", response_model=MeetingListOut)
+def list_meetings(
+    owner_token: str = Query(..., alias="ownerToken"),
+    db: Session = Depends(get_db),
+) -> MeetingListOut:
+    """소유 토큰으로 회의 목록을 최신순으로 조회. data는 제외해 가볍게 반환."""
+    owner = owner_token.strip()
+    if not owner:
+        raise HTTPException(status_code=400, detail="ownerToken이 필요합니다")
+
+    rows = db.execute(
+        select(Meeting)
+        .where(Meeting.owner_token == owner)
+        .order_by(Meeting.updated_at.desc())
+    ).scalars().all()
+    return MeetingListOut(
+        meetings=[
+            MeetingListItem(
+                id=m.id,
+                title=m.title,
+                createdAt=m.created_at,
+                updatedAt=m.updated_at,
+            )
+            for m in rows
+        ]
+    )
+
+
+@router.get("/meetings/{meeting_id}", response_model=MeetingOut)
+def get_meeting(
+    meeting_id: str,
+    db: Session = Depends(get_db),
+) -> MeetingOut:
+    """회의 단건 조회. 소유권 검증 없이 공유 링크 열람을 허용한다."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="회의를 찾을 수 없습니다")
+    return MeetingOut(
+        id=meeting.id,
+        title=meeting.title,
+        data=meeting.data,
+        createdAt=meeting.created_at,
+        updatedAt=meeting.updated_at,
+    )
+
+
+@router.put("/meetings/{meeting_id}")
+def update_meeting(
+    meeting_id: str,
+    payload: MeetingUpdateIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """회의를 부분 갱신. ownerToken 전달 시 소유권을 검증한다(None이면 통과)."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="회의를 찾을 수 없습니다")
+
+    # 소유권 검증: ownerToken이 오면 일치해야 함. None이면 데모 편의상 통과.
+    if payload.ownerToken is not None and payload.ownerToken.strip() != meeting.owner_token:
+        raise HTTPException(status_code=403, detail="권한이 없습니다")
+
+    if payload.title is not None:
+        new_title = payload.title.strip()
+        if new_title:
+            if len(new_title) > 120:
+                raise HTTPException(status_code=400, detail="제목이 너무 깁니다")
+            meeting.title = new_title
+
+    if payload.data is not None:
+        serialized = json.dumps(payload.data, ensure_ascii=False)
+        if len(serialized) > 1_000_000:
+            raise HTTPException(status_code=413, detail="회의 데이터가 너무 큽니다")
+        meeting.data = payload.data
+
+    # onupdate는 변경 필드가 없을 때 안 도므로 명시적으로 갱신한다.
+    meeting.updated_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/meetings/{meeting_id}")
+def delete_meeting(
+    meeting_id: str,
+    owner_token: str = Query(..., alias="ownerToken"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """회의 삭제. 소유 토큰이 일치해야 삭제 가능."""
+    meeting = db.get(Meeting, meeting_id)
+    if meeting is None:
+        raise HTTPException(status_code=404, detail="회의를 찾을 수 없습니다")
+    if meeting.owner_token != owner_token.strip():
+        raise HTTPException(status_code=403, detail="권한이 없습니다")
+    db.delete(meeting)
+    db.commit()
+    return {"ok": True}

@@ -60,3 +60,32 @@ class MeetsyncComment(Base):
 
     def __repr__(self) -> str:
         return f"<MeetsyncComment id={self.id} share_id={self.share_id!r}>"
+
+
+class Meeting(Base):
+    __tablename__ = "meetsync_meetings"
+
+    # 회의 ID(문자열 PK)
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    # 브라우저 익명 소유자 토큰
+    owner_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # 회의 제목(기본값은 파이썬 default만)
+    title: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="제목 없는 회의"
+    )
+    # 회의 전체 상태(임의 JSON)
+    data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # 생성 시각
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    # 갱신 시각
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<Meeting id={self.id!r} title={self.title!r}>"

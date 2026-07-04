@@ -24,6 +24,17 @@
   gap: var(--space-3);
 }
 
+/* 워드마크 버튼 래퍼 (버튼 리셋 — 목록으로 이동) */
+.wordmarkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+
 /* 자체 워드마크 (토스 로고 미사용, 블루 톤만 차용) */
 .wordmark {
   display: inline-flex;
@@ -47,16 +58,14 @@
   color: var(--toss-blue);
 }
 
-/* 시나리오 선택 */
-.scenarioSelect {
-  font-family: inherit;
+/* 목록 뒤로가기 (회의 흐름에서만 노출) */
+.backBtn {
   font-size: var(--fs-caption);
-  color: var(--gray-700);
-  background: var(--bg-secondary);
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-chip);
+  color: var(--gray-500);
+  background: none;
+  border: none;
+  cursor: pointer;
   padding: var(--space-1) var(--space-2);
-  max-width: 160px;
 }
 
 /* 스텝 인디케이터 1~5 */

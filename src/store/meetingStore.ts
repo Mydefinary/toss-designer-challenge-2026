@@ -18,6 +18,34 @@ import type {
 } from '../types';
 import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey, isLunchBlock } from '../lib/recommend';
 import { scenarios, defaultScenario, type Scenario } from '../data/scenarios';
+import type { MeetingData, MeetingRecord } from '../lib/meetingsApi';
+import { updateMeeting } from '../lib/meetingsApi';
+
+// ===== 자동 저장(디바운스) =====
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** 편집 액션 후 800ms 디바운스 자동 저장 (currentMeetingId 있을 때만, fire-and-forget) */
+function scheduleSave(get: () => MeetingState): void {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const s = get();
+    const id = s.currentMeetingId;
+    if (!id) return;
+    try {
+      const data: MeetingData = {
+        config: structuredClone(s.config),
+        attendees: structuredClone(s.attendees),
+        constraints: structuredClone(s.constraints),
+      };
+      void updateMeeting(id, { title: s.config.title, data }).catch(() => {
+        // 저장 실패는 조용히 무시(오프라인 등)
+      });
+    } catch (e) {
+      console.warn('자동 저장 실패', e);
+    }
+  }, 800);
+}
 
 // ===== 헬퍼 타입 =====
 
@@ -174,6 +202,8 @@ export interface MeetingState {
   // --- 상태 ---
   /** 현재 시나리오 id */
   scenarioId: string;
+  /** 현재 로드된 회의 id (목록에서 진입 시 세팅; 없으면 null) */
+  currentMeetingId: string | null;
   /** 회의 설정 */
   config: MeetingConfig;
   /** 참석자 목록 */
@@ -198,6 +228,12 @@ export interface MeetingState {
   // --- 액션 ---
   /** 시나리오 로드(없으면 no-op). 입력을 깊은 복사하고 확정/로그/undo 를 초기화 */
   loadScenario: (id: string) => void;
+  /** 회의 레코드로 상태를 세팅(네트워크 없음). currentMeetingId 를 저장하고 확정/로그/undo 초기화 */
+  loadMeeting: (id: string, record: MeetingRecord) => void;
+  /** 회의 제목만 변경(재계산 없음) 후 자동 저장 예약 */
+  setTitle: (title: string) => void;
+  /** 현재 상태를 저장용 데이터 스냅샷(깊은 복사)으로 반환 */
+  getMeetingData: () => MeetingData;
   /** 설정 부분 변경 후 재계산 */
   setConfig: (patch: Partial<MeetingConfig>) => void;
   /** 회의 길이 변경 후 재계산 */
@@ -237,11 +273,48 @@ export interface MeetingState {
 export const useMeetingStore = create<MeetingState>()((set, get) => ({
   // 모듈 로드 즉시 기본 시나리오로 초기 상태 계산 (useEffect 불필요)
   ...buildScenarioState(defaultScenario),
+  currentMeetingId: null,
 
   loadScenario: (id) => {
     const scenario = scenarios.find((s) => s.id === id);
     if (!scenario) return; // 없으면 no-op
     set(buildScenarioState(scenario));
+  },
+
+  loadMeeting: (id, record) => {
+    // 순수 세팅 — 네트워크 호출 없음. 확정/로그/undo/선택 인덱스를 초기화한다.
+    const config = structuredClone(record.data.config);
+    const attendees = structuredClone(record.data.attendees);
+    const constraints = structuredClone(record.data.constraints);
+    set({
+      config,
+      attendees,
+      constraints,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+      confirmedRanking: null,
+      currentRankIndex: 0,
+      finalChoice: 0,
+      issueLog: [],
+      appliedRelaxations: [],
+      currentMeetingId: id,
+      scenarioId: '',
+    });
+  },
+
+  setTitle: (title) => {
+    const config = { ...get().config, title };
+    set({ config });
+    scheduleSave(get);
+  },
+
+  getMeetingData: () => {
+    const { config, attendees, constraints } = get();
+    return {
+      config: structuredClone(config),
+      attendees: structuredClone(attendees),
+      constraints: structuredClone(constraints),
+    };
   },
 
   setConfig: (patch) => {
@@ -252,6 +325,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   setDuration: (min) => {
@@ -262,6 +336,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   setDateRange: (start, end) => {
@@ -272,6 +347,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   addRoom: (name) => {
@@ -286,6 +362,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   removeRoom: (id) => {
@@ -297,6 +374,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   setAttendeeRole: (id, role) => {
@@ -307,6 +385,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   setAttendeeName: (id, name) => {
@@ -318,6 +397,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   addAttendee: (name) => {
@@ -338,6 +418,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   removeAttendee: (id) => {
@@ -353,6 +434,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   setConstraint: (cell) => {
@@ -369,6 +451,7 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       candidates: deriveCandidates(attendees, constraints, config),
       relaxations: deriveRelaxations(attendees, constraints, config),
     });
+    scheduleSave(get);
   },
 
   recompute: () => {
@@ -532,6 +615,9 @@ export const useScenarioMeta = (): { id: string; name: string; purpose: string }
 /** 액션 번들 (useShallow 로 참조 안정화) */
 export const useMeetingActions = (): {
   loadScenario: MeetingState['loadScenario'];
+  loadMeeting: MeetingState['loadMeeting'];
+  setTitle: MeetingState['setTitle'];
+  getMeetingData: MeetingState['getMeetingData'];
   setConfig: MeetingState['setConfig'];
   setDuration: MeetingState['setDuration'];
   setDateRange: MeetingState['setDateRange'];
@@ -552,6 +638,9 @@ export const useMeetingActions = (): {
   useMeetingStore(
     useShallow((s) => ({
       loadScenario: s.loadScenario,
+      loadMeeting: s.loadMeeting,
+      setTitle: s.setTitle,
+      getMeetingData: s.getMeetingData,
       setConfig: s.setConfig,
       setDuration: s.setDuration,
       setDateRange: s.setDateRange,

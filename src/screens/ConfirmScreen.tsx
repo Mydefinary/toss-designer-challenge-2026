@@ -3,9 +3,10 @@
  * 확정된 순위를 요약하고(1순위 강조, 2~5순위는 예비), 링크/텍스트로 공유한다.
  * 예비 순위의 의미("1순위가 안 되면 자동 이동")를 분명히 전달한다.
  */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card } from '../components/ui';
 import { useCandidates, useConfig, useScenarioMeta } from '../store';
+import { useMeetingLoader } from './useMeetingLoader';
 import { dayName, formatRange } from '../lib/recommend';
 import ShareSection from './confirm/ShareSection';
 import RankDetail from './confirm/RankDetail';
@@ -13,19 +14,23 @@ import { buildSummaryText } from './confirm/summary';
 import styles from './confirm/confirm.module.css';
 
 export default function ConfirmScreen() {
+  const { fallback } = useMeetingLoader();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const candidates = useCandidates();
   const config = useConfig();
   const meta = useScenarioMeta();
 
+  if (fallback) return fallback;
+
   const top = candidates[0];
 
-  // 직접 /confirm 진입 등으로 후보가 없을 때
+  // 직접 진입 등으로 후보가 없을 때
   if (!top) {
     return (
       <div className={styles.empty}>
         <p className={styles.emptyText}>아직 확정된 후보가 없어요</p>
-        <Button onClick={() => navigate('/result')}>추천 결과로 가기</Button>
+        <Button onClick={() => navigate(`/m/${id}/result`)}>추천 결과로 가기</Button>
       </div>
     );
   }
@@ -81,7 +86,7 @@ export default function ConfirmScreen() {
 
       <ShareSection shareUrl={shareUrl} summaryText={summaryText} />
 
-      <Button fullWidth size="lg" onClick={() => navigate('/operate')}>
+      <Button fullWidth size="lg" onClick={() => navigate(`/m/${id}/operate`)}>
         운영 화면으로 (이슈 대응)
       </Button>
     </div>

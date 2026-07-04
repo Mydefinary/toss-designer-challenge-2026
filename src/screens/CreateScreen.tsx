@@ -1,9 +1,10 @@
 /** 화면 1 — 회의 생성. 제목·회의 길이·후보 기간·장소·참석자 입력 후 제약 화면으로 이동. */
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useConfig, useAttendees, useMeetingActions } from '../store';
 import { Button, Card, Badge } from '../components/ui';
 import type { MeetingLocation } from '../types';
+import { useMeetingLoader } from './useMeetingLoader';
 import { SegmentToggle, type SegmentOption } from './create/SegmentToggle';
 import { AttendeeRow } from './create/AttendeeRow';
 import { DurationPicker } from './create/DurationPicker';
@@ -17,6 +18,8 @@ const LOCATION_OPTIONS: SegmentOption<MeetingLocation>[] = [
 ];
 
 export default function CreateScreen() {
+  const { fallback } = useMeetingLoader();
+  const { id } = useParams<{ id: string }>();
   const config = useConfig();
   const attendees = useAttendees();
   const {
@@ -44,6 +47,8 @@ export default function CreateScreen() {
   }, [attendees]);
 
   const rooms = config.rooms ?? [];
+
+  if (fallback) return fallback;
 
   return (
     <>
@@ -130,7 +135,7 @@ export default function CreateScreen() {
 
       {/* 6. 하단 CTA */}
       <div className={styles.cta}>
-        <Button variant="primary" size="lg" fullWidth onClick={() => navigate('/constraints')}>
+        <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/m/${id}/constraints`)}>
           제약 입력하러 가기
         </Button>
       </div>

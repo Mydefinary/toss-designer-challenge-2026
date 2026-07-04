@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useMeetingStore, MIN_ATTENDEES, MAX_ATTENDEES } from './meetingStore';
 import { slotKey, scoreAllCandidates } from '../lib/recommend';
+import { scenarios } from '../data/scenarios';
+import type { MeetingRecord } from '../lib/meetingsApi';
 
 describe('store.setConstraint — 점심 override', () => {
   beforeEach(() => {
@@ -133,5 +135,36 @@ describe('store — 참석자 이름 편집·인원 추가/삭제 (가변 인원
     // 한 번 더 추가 시도 → no-op
     useMeetingStore.getState().addAttendee();
     expect(useMeetingStore.getState().attendees.length).toBe(MAX_ATTENDEES);
+  });
+});
+
+describe('store — 회의 로드/제목/스냅샷 (멀티 회의)', () => {
+  it('loadMeeting 은 레코드 데이터로 상태를 세팅하고 currentMeetingId 를 저장한다', () => {
+    const seed = scenarios[0]!;
+    const record: MeetingRecord = {
+      id: 'meet-123', title: '테스트 회의', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      data: { config: structuredClone({ ...seed.config, title: '테스트 회의' }), attendees: structuredClone(seed.attendees), constraints: structuredClone(seed.constraints) },
+    };
+    useMeetingStore.getState().loadMeeting('meet-123', record);
+    const s = useMeetingStore.getState();
+    expect(s.currentMeetingId).toBe('meet-123');
+    expect(s.config.title).toBe('테스트 회의');
+    expect(s.attendees.length).toBe(seed.attendees.length);
+    expect(Array.isArray(s.candidates)).toBe(true);
+  });
+
+  it('setTitle 은 제목만 바꾸고 getMeetingData 는 깊은 복사 스냅샷을 반환한다', () => {
+    const seed = scenarios[0]!;
+    const record: MeetingRecord = {
+      id: 'meet-xyz', title: '초기', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      data: { config: structuredClone(seed.config), attendees: structuredClone(seed.attendees), constraints: structuredClone(seed.constraints) },
+    };
+    useMeetingStore.getState().loadMeeting('meet-xyz', record);
+    useMeetingStore.getState().setTitle('새 제목');
+    expect(useMeetingStore.getState().config.title).toBe('새 제목');
+    const snap = useMeetingStore.getState().getMeetingData();
+    expect(snap.config.title).toBe('새 제목');
+    snap.config.title = 'X';
+    expect(useMeetingStore.getState().config.title).toBe('새 제목');
   });
 });

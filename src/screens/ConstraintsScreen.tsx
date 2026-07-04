@@ -4,16 +4,21 @@
  * 두 모드 모두 같은 store(useConstraints)를 구독·갱신한다.
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui';
+import { useMeetingLoader } from './useMeetingLoader';
 import { ModeTabs, type InputMode } from './constraints/ModeTabs';
 import { ButtonPanel } from './constraints/ButtonPanel';
 import { ConstraintChat } from './constraints/ConstraintChat';
 import styles from './constraints/ConstraintsScreen.module.css';
 
 export default function ConstraintsScreen() {
+  const { fallback } = useMeetingLoader();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [mode, setMode] = useState<InputMode>('button');
+
+  if (fallback) return fallback;
 
   return (
     <>
@@ -30,7 +35,7 @@ export default function ConstraintsScreen() {
 
       {/* 하단 CTA */}
       <div className={styles.cta}>
-        <Button variant="primary" size="lg" fullWidth onClick={() => navigate('/result')}>
+        <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/m/${id}/result`)}>
           추천 결과 보기
         </Button>
       </div>

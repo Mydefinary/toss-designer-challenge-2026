@@ -104,3 +104,44 @@ class CommentsOut(BaseModel):
     """코멘트 목록 응답."""
 
     comments: list[CommentOut]
+
+
+class MeetingCreateIn(BaseModel):
+    """회의 저장 요청."""
+
+    ownerToken: str = Field(..., min_length=1, max_length=64)
+    title: str | None = Field(None, max_length=120)
+    data: Any = None  # dict 또는 임의; None이면 라우터에서 {} 처리
+
+
+class MeetingUpdateIn(BaseModel):
+    """회의 부분 갱신 요청. ownerToken 전달 시 소유권 검증에 사용."""
+
+    ownerToken: str | None = None
+    title: str | None = Field(None, max_length=120)
+    data: Any = None
+
+
+class MeetingOut(BaseModel):
+    """회의 단건 응답."""
+
+    id: str
+    title: str
+    data: Any
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class MeetingListItem(BaseModel):
+    """회의 목록 항목(data 제외로 가볍게)."""
+
+    id: str
+    title: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class MeetingListOut(BaseModel):
+    """회의 목록 응답."""
+
+    meetings: list[MeetingListItem]

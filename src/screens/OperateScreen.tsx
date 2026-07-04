@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useConfig,
   useScenarioMeta,
@@ -18,6 +18,7 @@ import {
 import { formatRange, dayName } from '../lib/recommend';
 import type { MeetingConfig, RankedCandidate } from '../types';
 import { Button, Card } from '../components/ui';
+import { useMeetingLoader } from './useMeetingLoader';
 import { RankCard } from './operate/RankCard';
 import { HistoryTimeline } from './operate/HistoryTimeline';
 import styles from './operate/OperateScreen.module.css';
@@ -73,6 +74,8 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 export default function OperateScreen() {
+  const { fallback } = useMeetingLoader();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const config = useConfig();
   const meta = useScenarioMeta();
@@ -91,6 +94,8 @@ export default function OperateScreen() {
       if (copyTimer.current) clearTimeout(copyTimer.current);
     };
   }, []);
+
+  if (fallback) return fallback;
 
   const banner = (
     <div className={styles.banner}>
@@ -116,7 +121,7 @@ export default function OperateScreen() {
             운영·이슈 대응은 확정된 1~5순위 백업이 있어야 동작합니다.
           </p>
           <div className={styles.guideAction}>
-            <Button variant="primary" size="lg" onClick={() => navigate('/result')}>
+            <Button variant="primary" size="lg" onClick={() => navigate(`/m/${id}/result`)}>
               추천 결과로 이동
             </Button>
           </div>
@@ -148,7 +153,7 @@ export default function OperateScreen() {
             확정된 후보가 비어 있습니다. 추천 결과에서 다시 확정해 주세요.
           </p>
           <div className={styles.guideAction}>
-            <Button variant="primary" onClick={() => navigate('/result')}>
+            <Button variant="primary" onClick={() => navigate(`/m/${id}/result`)}>
               추천 결과로 이동
             </Button>
           </div>

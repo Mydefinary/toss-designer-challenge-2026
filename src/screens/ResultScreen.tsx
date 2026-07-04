@@ -4,9 +4,10 @@
  * 순서: 컨텍스트 헤더 → 순위 카드 → 투명성 보드(접힘) → 완화 패널 → 하단 확정 버튼.
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui';
 import { useCandidates, useConfig, useMeetingActions } from '../store';
+import { useMeetingLoader } from './useMeetingLoader';
 import ResultHeader from './result/ResultHeader';
 import RankCard from './result/RankCard';
 import TransparencyBoard from './result/TransparencyBoard';
@@ -15,6 +16,8 @@ import ShareActions from './result/ShareButton';
 import styles from './result/result.module.css';
 
 export default function ResultScreen() {
+  const { fallback } = useMeetingLoader();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const candidates = useCandidates();
   const config = useConfig();
@@ -27,8 +30,10 @@ export default function ResultScreen() {
 
   const handleConfirm = () => {
     confirm();
-    navigate('/confirm');
+    navigate(`/m/${id}/confirm`);
   };
+
+  if (fallback) return fallback;
 
   return (
     <div className={styles.screen}>

@@ -1,22 +1,14 @@
 /**
- * 앱 셸 — 모바일 퍼스트 레이아웃 + 헤더(워드마크·시나리오 선택·스텝 인디케이터).
- * 토스 로고를 쓰지 않고 자체 워드마크(MEETSYNC)를 쓰되 블루 톤만 차용한다.
+ * 앱 셸 — 모바일 퍼스트 레이아웃 + 헤더(워드마크·목록 이동·스텝 인디케이터).
+ * 시나리오 선택기는 제거했다. 회의 흐름(/m/:id/*) 경로에서만 스텝 네비와 "목록" 뒤로가기를 노출한다.
+ * '/' 또는 '/shared/*' 에서는 스텝 네비를 렌더하지 않는다.
  */
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './AppShell.module.css';
-import { scenarios } from '../data/scenarios';
-import { useMeetingStore, useScenarioMeta, useMeetingActions } from '../store';
 
-/** pathname → 스텝 번호(1~5) */
-const STEP_BY_PATH: Record<string, number> = {
-  '/create': 1,
-  '/constraints': 2,
-  '/result': 3,
-  '/confirm': 4,
-  '/operate': 5,
-};
-const STEP_PATHS = ['/create', '/constraints', '/result', '/confirm', '/operate'];
+/** 회의 흐름 5단계 세그먼트 (스텝 순서) */
+const STEP_SEGMENTS = ['create', 'constraints', 'result', 'confirm', 'operate'] as const;
 
 export interface AppShellProps {
   children: ReactNode;
@@ -25,63 +17,69 @@ export interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const meta = useScenarioMeta();
-  const scenarioId = useMeetingStore((s) => s.scenarioId);
-  const { loadScenario } = useMeetingActions();
 
-  const currentStep = STEP_BY_PATH[location.pathname] ?? 1;
+  // /m/:id/<segment> 매칭 — 회의 흐름 여부와 현재 스텝 판정
+  const match = location.pathname.match(
+    /^\/m\/([^/]+)\/(create|constraints|result|confirm|operate)$/,
+  );
+  const id = match?.[1] ?? null;
+  const segment = match?.[2] ?? null;
+  const currentStep = segment
+    ? STEP_SEGMENTS.indexOf(segment as (typeof STEP_SEGMENTS)[number]) + 1
+    : 0;
+  const inMeetingFlow = id !== null;
 
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.topRow}>
-          {/* 자체 워드마크 */}
-          <span className={styles.wordmark}>
-            <span className={styles.mark} aria-hidden="true" />
-            <span>
-              MEET<span className={styles.brandText}>SYNC</span>
-            </span>
-          </span>
-
-          {/* 시나리오 선택 */}
-          <select
-            className={styles.scenarioSelect}
-            value={scenarioId}
-            onChange={(e) => loadScenario(e.target.value)}
-            aria-label="시나리오 선택"
-            title={meta.purpose}
+          {/* 자체 워드마크 — 클릭 시 목록으로 */}
+          <button
+            type="button"
+            className={styles.wordmarkBtn}
+            onClick={() => navigate('/')}
           >
-            {scenarios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            <span className={styles.wordmark}>
+              <span className={styles.mark} aria-hidden="true" />
+              <span>
+                MEET<span className={styles.brandText}>SYNC</span>
+              </span>
+            </span>
+          </button>
+
+          {/* 회의 흐름에서만 목록 뒤로가기 */}
+          {inMeetingFlow && (
+            <button type="button" className={styles.backBtn} onClick={() => navigate('/')}>
+              ← 목록
+            </button>
+          )}
         </div>
 
-        {/* 스텝 인디케이터 1~5 */}
-        <nav className={styles.steps} aria-label="진행 단계">
-          {STEP_PATHS.map((path, i) => {
-            const n = i + 1;
-            const cls =
-              n === currentStep
-                ? `${styles.step} ${styles.stepActive}`
-                : n < currentStep
-                  ? `${styles.step} ${styles.stepDone}`
-                  : styles.step;
-            return (
-              <button
-                key={path}
-                type="button"
-                className={cls}
-                aria-current={n === currentStep ? 'step' : undefined}
-                onClick={() => navigate(path)}
-              >
-                {n}
-              </button>
-            );
-          })}
-        </nav>
+        {/* 스텝 인디케이터 1~5 — 회의 흐름에서만 */}
+        {inMeetingFlow && (
+          <nav className={styles.steps} aria-label="진행 단계">
+            {STEP_SEGMENTS.map((seg, i) => {
+              const n = i + 1;
+              const cls =
+                n === currentStep
+                  ? `${styles.step} ${styles.stepActive}`
+                  : n < currentStep
+                    ? `${styles.step} ${styles.stepDone}`
+                    : styles.step;
+              return (
+                <button
+                  key={seg}
+                  type="button"
+                  className={cls}
+                  aria-current={n === currentStep ? 'step' : undefined}
+                  onClick={() => navigate(`/m/${id}/${STEP_SEGMENTS[i]}`)}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </header>
 
       <main className={styles.body}>{children}</main>
