@@ -60,7 +60,7 @@ npm test       # Vitest 단위 테스트 (또는 npm run typecheck)
 
 ## 배포 (경로 `/meetsync`)
 
-MEETSYNC는 별도 도메인이 아니라 **기존 사이트의 경로 `/meetsync`** 아래에 서빙합니다(예: `https://lowpolitics.com/meetsync/`). 백엔드 API는 **같은 오리진의 `/api/meetsync/*`**(정치불신 FastAPI, nginx가 `/api`를 백엔드로 프록시)를 호출하므로 same-origin이라 CORS가 필요 없습니다.
+MEETSYNC는 별도 도메인이 아니라 **기존 사이트의 경로 `/meetsync`** 아래에 서빙합니다(예: `https://lowpolitics.com/meetsync/`). 백엔드 API는 **같은 오리진의 `/api/meetsync/*`**(MEETSYNC 독립 백엔드 = 이 repo의 `server/`, 포트 8010, nginx가 `/api`를 이 백엔드로 프록시)를 호출하므로 same-origin이라 CORS가 필요 없습니다.
 
 **(a) 빌드 & 서빙**
 
@@ -80,9 +80,9 @@ location /meetsync/ {
 # /api 는 기존대로 백엔드로 프록시되어 same-origin 유지 (별도 CORS 불필요)
 ```
 
-> HashRouter라 서브경로 라우팅 자체는 base와 무관하게 동작하지만, asset(js/css) 경로 때문에 `vite.config.ts`의 `base`가 프로덕션에서 `'/meetsync/'`로 설정되어 있습니다(개발은 `'/'`). 로컬 dev는 `server.proxy`가 `/api` → `http://localhost:8000`으로 프록시해 same-origin처럼 동작합니다.
+> HashRouter라 서브경로 라우팅 자체는 base와 무관하게 동작하지만, asset(js/css) 경로 때문에 `vite.config.ts`의 `base`가 프로덕션에서 `'/meetsync/'`로 설정되어 있습니다(개발은 `'/'`). 로컬 dev는 `server.proxy`가 `/api` → `http://localhost:8010`으로 프록시해 same-origin처럼 동작합니다.
 
-**(c) 백엔드** — 마이그레이션 및 env(`ANTHROPIC_API_KEY` 등) 설정은 `정치불신 docs/MEETSYNC_PROXY.md`를 참고하세요.
+**(c) 백엔드** — MEETSYNC 전용 독립 백엔드(FastAPI, 포트 8010)는 이 repo의 [`server/`](./server/)에 있습니다. DB 생성(`CREATE DATABASE meetsync`)·env(`ANTHROPIC_API_KEY`, `DATABASE_URL` 등)·기동 절차는 [`server/README.md`](./server/README.md)를 참고하세요.
 
 ## 제출물
 

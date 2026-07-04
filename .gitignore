@@ -6,3 +6,9 @@ dist/
 .env.*
 !.env.example
 .vite/
+
+# ── server/ (MEETSYNC 독립 백엔드) ──
+server/.env
+__pycache__/
+*.pyc
+server/.venv/

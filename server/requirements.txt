@@ -1,0 +1,7 @@
+# MEETSYNC 독립 백엔드 의존성
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+sqlalchemy>=2.0,<3.0
+pymysql>=1.1,<2.0
+httpx>=0.27,<1.0
+pydantic-settings>=2.2,<3.0

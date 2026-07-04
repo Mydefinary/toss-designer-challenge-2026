@@ -12,12 +12,13 @@ export default defineConfig(({ mode }) => ({
   base: mode === 'production' ? '/meetsync/' : '/',
   plugins: [react()],
   server: {
-    // 로컬 dev 프록시: '/api/*' 요청을 정치불신 FastAPI 백엔드로 프록시한다.
+    // 로컬 dev 프록시: '/api/*' 요청을 MEETSYNC 독립 백엔드(server/, 포트 8010)로 프록시한다.
     // 이걸로 로컬에서도 same-origin 상대경로('/api/meetsync/*')가 프로덕션과 동일하게 동작.
-    // 백엔드 로컬 포트가 다르면 아래 target 을 조정한다(예: 8001).
+    // (이전에는 정치불신 백엔드 8000 에 얹혀 있었으나 8010 독립 백엔드로 분리됨)
+    // 백엔드 로컬 포트가 다르면 아래 target 을 조정한다.
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:8010',
         changeOrigin: true,
       },
     },
