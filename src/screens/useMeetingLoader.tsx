@@ -8,18 +8,21 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../components/ui';
 import { getMeeting } from '../lib/meetingsApi';
-import { useMeetingStore, useMeetingActions } from '../store';
+import { useMeetingStore, useMeetingActions, setMeetingSocket } from '../store';
+import { connectMeetingSocket, getClientId } from '../lib/realtime';
 
 const centered: CSSProperties = { padding: 40, textAlign: 'center' };
 
 export function useMeetingLoader(): {
   status: 'loading' | 'ready' | 'error';
   fallback: ReactNode | null;
+  connected: boolean;
 } {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { loadMeeting } = useMeetingActions();
+  const { loadMeeting, applyRemoteData } = useMeetingActions();
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -48,6 +51,26 @@ export function useMeetingLoader(): {
     };
   }, [id, loadMeeting]);
 
+  // WS 연결 — REST 로드와 독립적으로 실시간 협업 채널을 수립한다
+  useEffect(() => {
+    if (!id) return;
+    const handle = connectMeetingSocket(id, {
+      onInit: (data) => {
+        applyRemoteData(data);
+      },
+      onUpdate: (msg) => {
+        // 자신이 보낸 편집은 에코 방지를 위해 무시
+        if (msg.clientId !== getClientId()) applyRemoteData(msg.data);
+      },
+      onStatusChange: (c) => setConnected(c),
+    });
+    setMeetingSocket(handle);
+    return () => {
+      handle.close();
+      setMeetingSocket(null);
+    };
+  }, [id, applyRemoteData]);
+
   let fallback: ReactNode | null = null;
   if (status === 'loading') {
     fallback = <div style={centered}>불러오는 중…</div>;
@@ -60,5 +83,5 @@ export function useMeetingLoader(): {
     );
   }
 
-  return { status, fallback };
+  return { status, fallback, connected };
 }

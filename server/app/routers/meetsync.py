@@ -15,15 +15,16 @@ import json
 import logging
 import re
 import secrets
+from collections import defaultdict
 from datetime import datetime
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_db
+from app.db import SessionLocal, get_db
 from app.models import Meeting, MeetsyncComment, MeetsyncShare, Preset
 from app.schemas import (
     AlternativeSuggestion,
@@ -52,6 +53,55 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api/meetsync", tags=["meetsync"])
 log = logging.getLogger(__name__)
+
+
+class _ConnectionManager:
+    """회의 id별 활성 WebSocket 집합을 관리하는 in-memory 매니저.
+
+    단일 uvicorn 워커 가정 — 프로세스 메모리에만 존재한다.
+    회의 id를 room 으로 보고 connect/disconnect/broadcast 를 제공한다.
+    """
+
+    def __init__(self) -> None:
+        self._rooms: dict[str, set[WebSocket]] = defaultdict(set)
+
+    async def connect(self, meeting_id: str, ws: WebSocket) -> None:
+        """accept 후 해당 회의 room 에 소켓을 추가한다."""
+        await ws.accept()
+        self._rooms[meeting_id].add(ws)
+
+    def disconnect(self, meeting_id: str, ws: WebSocket) -> None:
+        """room 에서 소켓을 제거. 비면 room 자체도 정리한다."""
+        room = self._rooms.get(meeting_id)
+        if room is not None:
+            room.discard(ws)
+            if not room:
+                self._rooms.pop(meeting_id, None)
+
+    async def broadcast(
+        self, meeting_id: str, message: dict, exclude: WebSocket | None = None
+    ) -> None:
+        """같은 회의 room 전체에 JSON 메시지를 전송. exclude 소켓은 건너뛴다.
+
+        전송 중 끊긴 소켓은 수집해 사후 제거(순회 중 변경 방지).
+        """
+        room = self._rooms.get(meeting_id)
+        if not room:
+            return
+        dead: list[WebSocket] = []
+        for sock in list(room):
+            if sock is exclude:
+                continue
+            try:
+                await sock.send_json(message)
+            except Exception:  # noqa: BLE001 — 끊긴 소켓은 사후 정리
+                dead.append(sock)
+        for sock in dead:
+            room.discard(sock)
+
+
+# 모듈 전역 매니저(단일 워커 in-memory). 회의별 실시간 편집 동기화에 사용.
+_manager = _ConnectionManager()
 
 _ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
@@ -618,14 +668,10 @@ def update_meeting(
     payload: MeetingUpdateIn,
     db: Session = Depends(get_db),
 ) -> dict:
-    """회의를 부분 갱신. ownerToken 전달 시 소유권을 검증한다(None이면 통과)."""
+    """회의를 부분 갱신. 편집은 개방(소유권 검증 없음) — 링크 소지자면 누구나 저장 가능."""
     meeting = db.get(Meeting, meeting_id)
     if meeting is None:
         raise HTTPException(status_code=404, detail="회의를 찾을 수 없습니다")
-
-    # 소유권 검증: ownerToken이 오면 일치해야 함. None이면 데모 편의상 통과.
-    if payload.ownerToken is not None and payload.ownerToken.strip() != meeting.owner_token:
-        raise HTTPException(status_code=403, detail="권한이 없습니다")
 
     if payload.title is not None:
         new_title = payload.title.strip()
@@ -644,6 +690,80 @@ def update_meeting(
     meeting.updated_at = datetime.utcnow()
     db.commit()
     return {"ok": True}
+
+
+# data 상한: meetings PUT 과 동일하게 1MB 선. ws edit 메시지도 같은 기준 적용.
+_WS_MAX_DATA_BYTES = 1_000_000
+
+
+@router.websocket("/meetings/{meeting_id}/ws")
+async def meeting_ws(websocket: WebSocket, meeting_id: str) -> None:
+    """회의 실시간 공동 편집 WebSocket.
+
+    최종 경로: /api/meetsync/meetings/{id}/ws
+    - 연결 직후 현재 최신 data 를 init 으로 push(회의 없으면 error 후 close).
+    - 클라 edit 수신 → Meeting.data/updated_at 갱신(commit) → room 전체 update broadcast.
+    - 잘못된 메시지/JSON 은 무시하고 연결 유지. Disconnect 시 room 에서 제거.
+
+    DB 세션: 요청용 get_db 의존성 대신 SessionLocal 을 수동으로 열고 닫는다.
+    """
+    await _manager.connect(meeting_id, websocket)
+    db = SessionLocal()
+    try:
+        # 연결 직후 현재 최신 상태 push. 회의 없으면 error 후 종료.
+        meeting = db.get(Meeting, meeting_id)
+        if meeting is None:
+            await websocket.send_json({"type": "error", "reason": "not_found"})
+            await websocket.close()
+            return
+        await websocket.send_json(
+            {"type": "init", "data": meeting.data, "title": meeting.title}
+        )
+
+        # 수신 loop: edit 메시지만 처리. 그 외/파싱 오류는 무시(연결 유지).
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                msg = json.loads(raw)
+            except (ValueError, TypeError):
+                # 잘못된 JSON 은 무시하고 계속 수신
+                continue
+            if not isinstance(msg, dict) or msg.get("type") != "edit":
+                continue
+
+            data = msg.get("data")
+            if data is None:
+                continue
+
+            # 크기 상한 검증(meetings PUT 과 동일 1MB). 초과 시 이 메시지만 무시.
+            try:
+                serialized = json.dumps(data, ensure_ascii=False)
+            except (TypeError, ValueError):
+                continue
+            if len(serialized.encode("utf-8")) > _WS_MAX_DATA_BYTES:
+                continue
+
+            # 최신 회의 재조회 후 갱신(다른 편집자와의 경합 대비 재로딩).
+            meeting = db.get(Meeting, meeting_id)
+            if meeting is None:
+                await websocket.send_json({"type": "error", "reason": "not_found"})
+                break
+            meeting.data = data
+            meeting.updated_at = datetime.utcnow()
+            db.commit()
+
+            origin = msg.get("clientId")
+            # 송신자 포함 room 전체 broadcast(프론트가 자기 clientId 면 무시).
+            await _manager.broadcast(
+                meeting_id,
+                {"type": "update", "clientId": origin, "data": data},
+            )
+    except WebSocketDisconnect:
+        # 정상 종료 — finally 에서 room 정리
+        pass
+    finally:
+        _manager.disconnect(meeting_id, websocket)
+        db.close()
 
 
 @router.delete("/meetings/{meeting_id}")

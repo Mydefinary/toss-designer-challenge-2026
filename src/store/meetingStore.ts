@@ -20,18 +20,34 @@ import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey, isL
 import { scenarios, defaultScenario, type Scenario } from '../data/scenarios';
 import type { MeetingData, MeetingRecord } from '../lib/meetingsApi';
 import { updateMeeting } from '../lib/meetingsApi';
+import type { MeetingSocketHandle } from '../lib/realtime';
 
 // ===== 자동 저장(디바운스) =====
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+// ===== 실시간 WebSocket 모듈 변수 =====
+
+/** 현재 활성 소켓 핸들 (useMeetingLoader 에서 setMeetingSocket 으로 주입) */
+let socketHandle: MeetingSocketHandle | null = null;
+/** 원격 데이터 적용 중 플래그 — 자동 저장/ws 전송을 차단한다 */
+let applyingRemote = false;
+/** ws 전송 디바운스 타이머 */
+let wsSendTimer: ReturnType<typeof setTimeout> | null = null;
+
 /** 편집 액션 후 800ms 디바운스 자동 저장 (currentMeetingId 있을 때만, fire-and-forget) */
 function scheduleSave(get: () => MeetingState): void {
+  // 원격 데이터 적용 중에는 자동 저장·ws 전송 모두 차단
+  if (applyingRemote) return;
+  // ws 로 먼저 전파 (REST 보다 빠른 400ms 디바운스)
+  scheduleWsSend(get);
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const s = get();
     const id = s.currentMeetingId;
     if (!id) return;
+    // ws 연결 중이면 서버가 ws-edit 으로 직접 persist → REST 중복 저장 건너뜀
+    if (socketHandle && socketHandle.isConnected()) return;
     try {
       const data: MeetingData = {
         config: structuredClone(s.config),
@@ -45,6 +61,21 @@ function scheduleSave(get: () => MeetingState): void {
       console.warn('자동 저장 실패', e);
     }
   }, 800);
+}
+
+/** 편집 액션 후 400ms 디바운스로 ws 에 편집 내용을 전파한다 */
+function scheduleWsSend(get: () => MeetingState): void {
+  if (applyingRemote) return;
+  if (wsSendTimer !== null) clearTimeout(wsSendTimer);
+  wsSendTimer = setTimeout(() => {
+    try {
+      if (socketHandle && socketHandle.isConnected()) {
+        socketHandle.sendEdit(get().getMeetingData());
+      }
+    } catch (e) {
+      console.warn('실시간 전송 실패', e);
+    }
+  }, 400);
 }
 
 // ===== 헬퍼 타입 =====
@@ -266,6 +297,13 @@ export interface MeetingState {
   applyRelaxation: (suggestion: RelaxationSuggestion) => void;
   /** 직전 완화 되돌림(스냅샷 복원) */
   undoRelaxation: () => void;
+  /**
+   * 원격(WebSocket)에서 수신한 MeetingData 를 스토어에 반영한다.
+   * 운영 상태(확정 랭킹·이슈 로그·완화 스택 등)는 건드리지 않고
+   * 입력 데이터(config/attendees/constraints)와 파생값만 갱신한다.
+   * applyingRemote 플래그로 자동 저장·ws 전송을 차단하여 에코 루프를 방지한다.
+   */
+  applyRemoteData: (data: MeetingData) => void;
 }
 
 // ===== 스토어 생성 =====
@@ -569,7 +607,29 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
       issueLog: [...issueLog, entry],
     });
   },
+
+  /** 원격(WebSocket) 수신 데이터를 스토어에 반영한다. 운영 상태는 보존 */
+  applyRemoteData: (data: MeetingData) => {
+    applyingRemote = true;
+    try {
+      const config = structuredClone(data.config);
+      const attendees = structuredClone(data.attendees);
+      const constraints = structuredClone(data.constraints);
+      const candidates = deriveCandidates(attendees, constraints, config);
+      const relaxations = deriveRelaxations(attendees, constraints, config);
+      set({ config, attendees, constraints, candidates, relaxations });
+    } finally {
+      applyingRemote = false;
+    }
+  },
 }));
+
+// ===== 실시간 소켓 주입 =====
+
+/** useMeetingLoader 가 WS 연결 수립/해제 시 호출 — 모듈 변수에 핸들을 주입한다 */
+export function setMeetingSocket(handle: MeetingSocketHandle | null): void {
+  socketHandle = handle;
+}
 
 // ===== 셀렉터 훅 =====
 
@@ -634,6 +694,7 @@ export const useMeetingActions = (): {
   setFinalChoice: MeetingState['setFinalChoice'];
   applyRelaxation: MeetingState['applyRelaxation'];
   undoRelaxation: MeetingState['undoRelaxation'];
+  applyRemoteData: MeetingState['applyRemoteData'];
 } =>
   useMeetingStore(
     useShallow((s) => ({
@@ -657,5 +718,6 @@ export const useMeetingActions = (): {
       setFinalChoice: s.setFinalChoice,
       applyRelaxation: s.applyRelaxation,
       undoRelaxation: s.undoRelaxation,
+      applyRemoteData: s.applyRemoteData,
     })),
   );

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { useMeetingStore, MIN_ATTENDEES, MAX_ATTENDEES } from './meetingStore';
 import { slotKey, scoreAllCandidates } from '../lib/recommend';
 import { scenarios } from '../data/scenarios';
-import type { MeetingRecord } from '../lib/meetingsApi';
+import type { MeetingData, MeetingRecord } from '../lib/meetingsApi';
 
 describe('store.setConstraint — 점심 override', () => {
   beforeEach(() => {
@@ -135,6 +135,57 @@ describe('store — 참석자 이름 편집·인원 추가/삭제 (가변 인원
     // 한 번 더 추가 시도 → no-op
     useMeetingStore.getState().addAttendee();
     expect(useMeetingStore.getState().attendees.length).toBe(MAX_ATTENDEES);
+  });
+});
+
+describe('store — applyRemoteData (실시간 원격 반영)', () => {
+  it('applyRemoteData 는 입력 데이터를 반영하고 candidates 를 재파생한다', () => {
+    const seed = scenarios[0]!;
+    const record: MeetingRecord = {
+      id: 'meet-remote-1', title: '초기', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      data: { config: structuredClone(seed.config), attendees: structuredClone(seed.attendees), constraints: structuredClone(seed.constraints) },
+    };
+    useMeetingStore.getState().loadMeeting('meet-remote-1', record);
+
+    // 원격에서 수신한 다른 타이틀과 데이터
+    const remoteData: MeetingData = {
+      config: { ...structuredClone(seed.config), title: '원격 변경' },
+      attendees: structuredClone(seed.attendees),
+      constraints: structuredClone(seed.constraints),
+    };
+    useMeetingStore.getState().applyRemoteData(remoteData);
+    const s = useMeetingStore.getState();
+
+    expect(s.config.title).toBe('원격 변경');
+    expect(s.attendees.length).toBe(seed.attendees.length);
+    expect(s.constraints.length).toBe(seed.constraints.length);
+    expect(Array.isArray(s.candidates)).toBe(true);
+  });
+
+  it('applyRemoteData 는 확정 랭킹 등 운영 상태를 보존한다', () => {
+    const seed = scenarios[0]!;
+    const record: MeetingRecord = {
+      id: 'meet-remote-2', title: '초기', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      data: { config: structuredClone(seed.config), attendees: structuredClone(seed.attendees), constraints: structuredClone(seed.constraints) },
+    };
+    useMeetingStore.getState().loadMeeting('meet-remote-2', record);
+    // 확정 랭킹 수립
+    useMeetingStore.getState().confirm();
+    const confirmedBefore = useMeetingStore.getState().confirmedRanking;
+    expect(confirmedBefore).not.toBeNull();
+
+    // 원격 데이터 적용
+    const remoteData: MeetingData = {
+      config: { ...structuredClone(seed.config), title: '원격 변경2' },
+      attendees: structuredClone(seed.attendees),
+      constraints: structuredClone(seed.constraints),
+    };
+    useMeetingStore.getState().applyRemoteData(remoteData);
+    const s = useMeetingStore.getState();
+
+    // 운영 상태(확정 랭킹)는 보존된다
+    expect(s.confirmedRanking).not.toBeNull();
+    expect(s.confirmedRanking?.length).toBe(confirmedBefore?.length);
   });
 });
 
