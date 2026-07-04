@@ -11,7 +11,7 @@ import ResultHeader from './result/ResultHeader';
 import RankCard from './result/RankCard';
 import TransparencyBoard from './result/TransparencyBoard';
 import RelaxationPanel from './result/RelaxationPanel';
-import ShareButton from './result/ShareButton';
+import ShareActions from './result/ShareButton';
 import styles from './result/result.module.css';
 
 export default function ResultScreen() {
@@ -36,10 +36,7 @@ export default function ResultScreen() {
 
       {!isEmpty && (
         <section className={styles.section} aria-label="추천 순위">
-          <div className={styles.rankHeader}>
-            <h2 className={styles.sectionTitle}>추천 시간 {candidates.length}순위</h2>
-            <ShareButton />
-          </div>
+          <h2 className={styles.sectionTitle}>추천 시간 {candidates.length}순위</h2>
           <div className={styles.rankList}>
             {candidates.map((c) => (
               <RankCard
@@ -70,6 +67,7 @@ export default function ResultScreen() {
             가능한 시간이 없어요. 아래 완화 제안을 적용해보세요
           </p>
         )}
+        {!isEmpty && <ShareActions />}
         <Button fullWidth size="lg" disabled={isEmpty} onClick={handleConfirm}>
           이 순위로 확정하기
         </Button>

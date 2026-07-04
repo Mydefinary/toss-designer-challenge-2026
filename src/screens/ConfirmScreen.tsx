@@ -8,6 +8,8 @@ import { Badge, Button, Card } from '../components/ui';
 import { useCandidates, useConfig, useScenarioMeta } from '../store';
 import { dayName, formatRange } from '../lib/recommend';
 import ShareSection from './confirm/ShareSection';
+import RankDetail from './confirm/RankDetail';
+import { buildSummaryText } from './confirm/summary';
 import styles from './confirm/confirm.module.css';
 
 export default function ConfirmScreen() {
@@ -35,11 +37,8 @@ export default function ConfirmScreen() {
     `${window.location.origin}${window.location.pathname}` +
     `#/confirm?s=${meta.id}&top=${top.startSlot.day}-${top.startSlot.blockIndex}`;
 
-  // 사람이 읽는 요약 텍스트
-  const summaryText = [
-    `📌 ${config.title}`,
-    ...candidates.map((c) => `${c.rank}순위 ${dayName(c.startSlot.day)} ${formatRange(c.startSlot, config.durationMinutes)}`),
-  ].join('\n');
+  // 사람이 읽는 요약 텍스트 — 순위별 참석/양보/불참 상세 포함
+  const summaryText = buildSummaryText(candidates, config, shareUrl);
 
   return (
     <div className={styles.screen}>
@@ -59,11 +58,7 @@ export default function ConfirmScreen() {
             </Badge>
           </div>
           <p className={styles.topTime}>{dayName(top.startSlot.day)} {formatRange(top.startSlot, config.durationMinutes)}</p>
-          {top.yielding.length > 0 && (
-            <p className={styles.meta}>
-              양보 {top.yielding.map((y) => `${y.attendee.name}님`).join(', ')}
-            </p>
-          )}
+          <RankDetail candidate={top} />
         </Card>
 
         {backups.length > 0 && (
@@ -75,14 +70,8 @@ export default function ConfirmScreen() {
               {backups.map((c) => (
                 <Card key={c.rank} className={styles.backupCard}>
                   <Badge tone="neutral">예비 {c.rank}순위</Badge>
-                  <div className={styles.backupBody}>
-                    <p className={styles.backupTime}>{dayName(c.startSlot.day)} {formatRange(c.startSlot, config.durationMinutes)}</p>
-                    <p className={styles.backupMeta}>
-                      참석 {c.satisfied.length}명
-                      {c.yielding.length > 0 ? ` · 양보 ${c.yielding.length}명` : ''}
-                      {c.absent.length > 0 ? ` · 불참 ${c.absent.length}명` : ''}
-                    </p>
-                  </div>
+                  <p className={styles.backupTime}>{dayName(c.startSlot.day)} {formatRange(c.startSlot, config.durationMinutes)}</p>
+                  <RankDetail candidate={c} />
                 </Card>
               ))}
             </div>

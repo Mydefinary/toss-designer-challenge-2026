@@ -56,11 +56,10 @@
   margin: 0;
 }
 
-/* ===== 순위 헤더 (제목 좌 · 저장 공유 버튼 우) ===== */
-.rankHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* ===== 저장/공유 액션 (하단 확정 버튼 위 2열 그리드) ===== */
+.shareActions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-2);
 }
 

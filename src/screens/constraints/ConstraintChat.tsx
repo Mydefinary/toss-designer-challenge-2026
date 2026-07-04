@@ -40,7 +40,7 @@ export function ConstraintChat() {
   const [loading, setLoading] = useState(false);
 
   const logRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // 현재 참석자 이름으로 만든 예시 5개 — 로컬 파서(nlParser)가 확실히 인식하는 문형.
   // ①특정요일 종일 외근 불가 ②매일 점심직후 회피 ③특정요일 오전 미출근
@@ -142,20 +142,22 @@ export function ConstraintChat() {
 
       {/* 입력 행 */}
       <div className={styles.inputRow}>
-        <input
+        <textarea
           ref={inputRef}
           className={styles.input}
-          type="text"
+          rows={4}
           value={draft}
-          placeholder="예) 민준은 화요일 오후 외근"
-          aria-label="자연어 제약 입력"
+          placeholder={`여러 제약을 한 번에 입력할 수 있어요.\n예) 지훈은 화요일 종일 외근\n서연은 매일 점심 직후 회피\n민준은 금요일 오후 불가`}
+          aria-label="자연어 제약 입력 (여러 줄 가능)"
           disabled={loading}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            // Ctrl+Enter 또는 Cmd+Enter 로 전송
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
               e.preventDefault();
               void send();
             }
+            // 일반 Enter 는 textarea 기본 동작(줄바꿈) 유지
           }}
         />
         <Button

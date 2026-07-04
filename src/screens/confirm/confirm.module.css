@@ -100,7 +100,8 @@
 .backupCard {
   padding: var(--space-4);
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-3);
 }
 
@@ -111,15 +112,64 @@
   margin: 0;
 }
 
-.backupMeta {
-  font-size: var(--fs-caption);
-  color: var(--gray-400);
-  margin: var(--space-1) 0 0;
+/* ===== 순위 상세(RankDetail) — 참석/양보/불참 그룹 ===== */
+.rankDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.backupBody {
-  flex: 1;
-  min-width: 0;
+.detailGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.detailLabel {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.personList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.personRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.personName {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.personNameRequired {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-bold);
+  color: var(--toss-gray);
+}
+
+.detailChips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.chipWithRole {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.roleBadge {
+  flex-shrink: 0;
 }
 
 .autoMoveNote {

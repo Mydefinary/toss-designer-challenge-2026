@@ -96,7 +96,7 @@
 .inputRow {
   display: flex;
   gap: var(--space-2);
-  align-items: center;
+  align-items: flex-end; /* 버튼을 textarea 하단에 정렬 */
 }
 
 .input {
@@ -110,14 +110,34 @@
   font-family: inherit;
   font-size: var(--fs-body);
   color: var(--toss-gray);
+  line-height: 1.5;
+  min-height: 100px; /* 4줄 이상 편하게 보이도록 */
+  resize: vertical; /* 세로 리사이즈 허용 */
+  /* placeholder 개행 표시 */
+  white-space: pre-line;
+}
+
+.input::placeholder {
+  color: var(--gray-400);
+  white-space: pre-line;
 }
 
 .input:focus {
   outline: none;
   border-color: var(--toss-blue);
+  box-shadow: 0 0 0 3px rgba(0, 100, 255, 0.08);
 }
 
 .input:disabled {
   background: var(--gray-50);
   color: var(--gray-400);
+  resize: none;
+}
+
+/* 모바일 — 최소 높이 조금 줄여 화면 공간 절약 */
+@media (max-width: 480px) {
+  .input {
+    min-height: 80px;
+    font-size: var(--fs-body);
+  }
 }
