@@ -10,7 +10,6 @@ import { useMeetingLoader } from './useMeetingLoader';
 import { dayName, formatRange } from '../lib/recommend';
 import ShareSection from './confirm/ShareSection';
 import RankDetail from './confirm/RankDetail';
-import { buildSummaryText } from './confirm/summary';
 import styles from './confirm/confirm.module.css';
 
 export default function ConfirmScreen() {
@@ -36,14 +35,6 @@ export default function ConfirmScreen() {
   }
 
   const backups = candidates.slice(1);
-
-  // 공유 링크 — 해시 라우팅 + 시나리오/1순위 슬롯
-  const shareUrl =
-    `${window.location.origin}${window.location.pathname}` +
-    `#/confirm?s=${meta.id}&top=${top.startSlot.day}-${top.startSlot.blockIndex}`;
-
-  // 사람이 읽는 요약 텍스트 — 순위별 참석/양보/불참 상세 포함
-  const summaryText = buildSummaryText(candidates, config, shareUrl);
 
   return (
     <div className={styles.screen}>
@@ -84,7 +75,7 @@ export default function ConfirmScreen() {
         )}
       </section>
 
-      <ShareSection shareUrl={shareUrl} summaryText={summaryText} />
+      <ShareSection />
 
       <Button fullWidth size="lg" onClick={() => navigate(`/m/${id}/operate`)}>
         운영 화면으로 (이슈 대응)

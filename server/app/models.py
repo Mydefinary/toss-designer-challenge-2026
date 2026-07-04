@@ -89,3 +89,30 @@ class Meeting(Base):
 
     def __repr__(self) -> str:
         return f"<Meeting id={self.id!r} title={self.title!r}>"
+
+
+class Preset(Base):
+    __tablename__ = "meetsync_presets"
+
+    # 프리셋 ID(문자열 PK, 토큰)
+    id: Mapped[str] = mapped_column(String(24), primary_key=True)
+    # 브라우저 익명 소유자 토큰
+    owner_token: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    # 프리셋 이름
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # 회의 설정+참석자+제약 전체 임의 JSON
+    data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # 생성 시각
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), nullable=False
+    )
+    # 갱신 시각
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        nullable=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<Preset id={self.id!r} name={self.name!r}>"

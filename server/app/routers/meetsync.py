@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import Meeting, MeetsyncComment, MeetsyncShare
+from app.models import Meeting, MeetsyncComment, MeetsyncShare, Preset
 from app.schemas import (
     CommentIn,
     CommentOut,
@@ -37,6 +37,11 @@ from app.schemas import (
     MeetingUpdateIn,
     ParseConstraintsRequest,
     ParseConstraintsResponse,
+    PresetCreateIn,
+    PresetListItem,
+    PresetListOut,
+    PresetOut,
+    PresetUpdateIn,
     ShareCreateIn,
     ShareCreateOut,
     ShareOut,
@@ -442,5 +447,137 @@ def delete_meeting(
     if meeting.owner_token != owner_token.strip():
         raise HTTPException(status_code=403, detail="권한이 없습니다")
     db.delete(meeting)
+    db.commit()
+    return {"ok": True}
+
+
+# ── 프리셋(Preset) 저장·목록 ──────────────────────────────
+
+
+@router.post("/presets")
+def create_preset(
+    payload: PresetCreateIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """프리셋을 저장하고 프리셋 ID를 발급. 소유 토큰으로 목록/삭제 권한을 구분한다."""
+    owner = payload.ownerToken.strip()
+    if not owner:
+        raise HTTPException(status_code=400, detail="ownerToken이 필요합니다")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name이 필요합니다")
+    if len(name) > 100:
+        raise HTTPException(status_code=400, detail="name이 너무 깁니다")
+
+    data = payload.data if payload.data is not None else {}
+    serialized = json.dumps(data, ensure_ascii=False)
+    if len(serialized) > 1_000_000:
+        raise HTTPException(status_code=413, detail="프리셋 데이터가 너무 큽니다")
+
+    # 프리셋 ID 발급. 충돌 시 재생성(create_meeting과 동일 패턴).
+    token = ""
+    for _ in range(10):
+        candidate = secrets.token_urlsafe(9)
+        if db.get(Preset, candidate) is None:
+            token = candidate
+            break
+    if not token:
+        raise HTTPException(status_code=500, detail="프리셋 ID 생성에 실패했습니다")
+
+    preset = Preset(id=token, owner_token=owner, name=name, data=data)
+    db.add(preset)
+    db.commit()
+    return {"id": token}
+
+
+@router.get("/presets", response_model=PresetListOut)
+def list_presets(
+    owner_token: str = Query(..., alias="ownerToken"),
+    db: Session = Depends(get_db),
+) -> PresetListOut:
+    """소유 토큰으로 프리셋 목록을 최신순으로 조회. data는 제외해 가볍게 반환."""
+    owner = owner_token.strip()
+    if not owner:
+        raise HTTPException(status_code=400, detail="ownerToken이 필요합니다")
+
+    rows = db.execute(
+        select(Preset)
+        .where(Preset.owner_token == owner)
+        .order_by(Preset.updated_at.desc())
+    ).scalars().all()
+    return PresetListOut(
+        presets=[
+            PresetListItem(
+                id=p.id,
+                name=p.name,
+                createdAt=p.created_at,
+                updatedAt=p.updated_at,
+            )
+            for p in rows
+        ]
+    )
+
+
+@router.get("/presets/{preset_id}", response_model=PresetOut)
+def get_preset(
+    preset_id: str,
+    db: Session = Depends(get_db),
+) -> PresetOut:
+    """프리셋 단건 조회. 소유권 검증 없이 공유 링크 열람을 허용한다."""
+    preset = db.get(Preset, preset_id)
+    if preset is None:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+    return PresetOut(
+        id=preset.id,
+        name=preset.name,
+        data=preset.data,
+        createdAt=preset.created_at,
+        updatedAt=preset.updated_at,
+    )
+
+
+@router.put("/presets/{preset_id}")
+def update_preset(
+    preset_id: str,
+    payload: PresetUpdateIn,
+    db: Session = Depends(get_db),
+) -> dict:
+    """프리셋을 부분 갱신. name·data 중 전달된 필드만 반영한다."""
+    preset = db.get(Preset, preset_id)
+    if preset is None:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+
+    if payload.name is not None:
+        new_name = payload.name.strip()
+        if len(new_name) > 100:
+            raise HTTPException(status_code=400, detail="name이 너무 깁니다")
+        preset.name = new_name
+
+    if payload.data is not None:
+        serialized = json.dumps(payload.data, ensure_ascii=False)
+        if len(serialized) > 1_000_000:
+            raise HTTPException(status_code=413, detail="프리셋 데이터가 너무 큽니다")
+        preset.data = payload.data
+
+    # onupdate는 변경 필드가 없을 때 안 돌므로 명시적으로 갱신한다.
+    preset.updated_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/presets/{preset_id}")
+def delete_preset(
+    preset_id: str,
+    owner_token: str = Query(..., alias="ownerToken"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """프리셋 삭제. 소유 토큰이 일치해야 삭제 가능."""
+    preset = db.get(Preset, preset_id)
+    if preset is None:
+        raise HTTPException(status_code=404, detail="프리셋을 찾을 수 없습니다")
+    if preset.owner_token != owner_token.strip():
+        raise HTTPException(status_code=403, detail="권한이 없습니다")
+    db.delete(preset)
     db.commit()
     return {"ok": True}

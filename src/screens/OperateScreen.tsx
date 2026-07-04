@@ -14,6 +14,9 @@ import {
   useFinalChoice,
   useMeetingActions,
   useMeetingStore,
+  useAttendees,
+  useConstraints,
+  useCandidates,
 } from '../store';
 import { formatRange, dayName } from '../lib/recommend';
 import type { MeetingConfig, RankedCandidate } from '../types';
@@ -22,6 +25,7 @@ import { useMeetingLoader } from './useMeetingLoader';
 import { RankCard } from './operate/RankCard';
 import { HistoryTimeline } from './operate/HistoryTimeline';
 import styles from './operate/OperateScreen.module.css';
+import { createShare, isShareEnabled } from '../lib/shareApi';
 
 /** 재공유용 요약 텍스트 생성 — 최종 선택 후보 기준 */
 function buildSummary(
@@ -85,8 +89,13 @@ export default function OperateScreen() {
   const confirmedRanking = useMeetingStore((s) => s.confirmedRanking);
   const finalChoice = useMeetingStore((s) => s.finalChoice);
 
+  const attendees = useAttendees();
+  const constraints = useConstraints();
+  const candidates = useCandidates();
+
   const listRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -201,11 +210,38 @@ export default function OperateScreen() {
   };
 
   const handleReshare = async () => {
-    const ok = await copyText(buildSummary(config, final, finalChoice));
-    if (!ok) return;
-    setCopied(true);
-    if (copyTimer.current) clearTimeout(copyTimer.current);
-    copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    if (sharing) return; // 더블클릭 방지
+    setSharing(true);
+    try {
+      const summary = buildSummary(config, final, finalChoice);
+      let text = summary;
+
+      if (isShareEnabled()) {
+        try {
+          const snapshot = {
+            scenarioId: meta.id,
+            scenarioMeta: meta,
+            config,
+            attendees,
+            constraints,
+            candidates,
+          };
+          const { id } = await createShare(snapshot);
+          const url = `${window.location.origin}${window.location.pathname}#/shared/${id}`;
+          text = `${summary}\n공유 링크: ${url}`;
+        } catch {
+          // createShare 실패 시 — 텍스트만이라도 복사(링크 없이 폴백)
+        }
+      }
+
+      const ok = await copyText(text);
+      if (!ok) return;
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } finally {
+      setSharing(false);
+    }
   };
 
   return (
@@ -238,8 +274,16 @@ export default function OperateScreen() {
 
       {/* 2. 최종 선택 재공유 */}
       <div className={styles.actions}>
-        <Button variant="secondary" fullWidth onClick={handleReshare} aria-live="polite">
-          {copied ? (
+        <Button
+          variant="secondary"
+          fullWidth
+          onClick={handleReshare}
+          disabled={sharing}
+          aria-live="polite"
+        >
+          {sharing ? (
+            '공유 중...'
+          ) : copied ? (
             <span className={styles.copied}>복사됨 ✓</span>
           ) : (
             '최종 선택 재공유 (요약 복사)'

@@ -145,3 +145,43 @@ class MeetingListOut(BaseModel):
     """회의 목록 응답."""
 
     meetings: list[MeetingListItem]
+
+
+class PresetCreateIn(BaseModel):
+    """프리셋 저장 요청."""
+
+    ownerToken: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=100)
+    data: Any = None  # dict 또는 임의; None이면 라우터에서 {} 처리
+
+
+class PresetUpdateIn(BaseModel):
+    """프리셋 부분 갱신 요청."""
+
+    name: str | None = Field(None, max_length=100)
+    data: Any = None
+
+
+class PresetOut(BaseModel):
+    """프리셋 단건 응답."""
+
+    id: str
+    name: str
+    data: Any
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class PresetListItem(BaseModel):
+    """프리셋 목록 항목(data 제외로 가볍게)."""
+
+    id: str
+    name: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class PresetListOut(BaseModel):
+    """프리셋 목록 응답."""
+
+    presets: list[PresetListItem]

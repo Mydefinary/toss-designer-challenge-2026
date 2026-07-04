@@ -13,6 +13,7 @@ import {
   type MeetingSummary,
   type MeetingData,
 } from '../../lib/meetingsApi';
+import { listPresets, getPreset, deletePreset, type PresetSummary } from '../../lib/presetsApi';
 import { scenarios, defaultScenario } from '../../data/scenarios';
 import type { Attendee } from '../../types';
 import styles from './MeetingListScreen.module.css';
@@ -55,6 +56,8 @@ export default function MeetingListScreen() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [presets, setPresets] = useState<PresetSummary[]>([]);
+  const [presetStatus, setPresetStatus] = useState<Status>('loading');
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -79,6 +82,25 @@ export default function MeetingListScreen() {
       .catch(() => {
         if (ignore) return;
         setStatus('error');
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  // 프리셋 목록 로드 (회의 목록과 별개 상태로 관리)
+  useEffect(() => {
+    let ignore = false;
+    setPresetStatus('loading');
+    listPresets()
+      .then((ps) => {
+        if (ignore) return;
+        setPresets(ps);
+        setPresetStatus('ready');
+      })
+      .catch(() => {
+        if (ignore) return;
+        setPresetStatus('error');
       });
     return () => {
       ignore = true;
@@ -128,6 +150,34 @@ export default function MeetingListScreen() {
       }
     },
     [navigate, showToast],
+  );
+
+  // 프리셋으로 새 회의 만들기 — 전체 레코드를 받아 그대로 회의 생성(참석자/장소/제약 정합 유지)
+  const handleUsePreset = useCallback(
+    async (summary: PresetSummary) => {
+      try {
+        const record = await getPreset(summary.id);
+        const title = summary.name.trim() ? summary.name : '제목 없는 회의';
+        // handleCreate 가 낙관적 카드 + createMeeting + 이동을 처리한다
+        await handleCreate(title, record.data);
+      } catch (e) {
+        showToast(`프리셋을 불러오지 못했어요: ${(e as Error).message}`);
+      }
+    },
+    [handleCreate, showToast],
+  );
+
+  // 프리셋 삭제 — 목록에서 즉시 제거(행 클릭 전파 방지는 호출부에서)
+  const handleDeletePreset = useCallback(
+    async (id: string) => {
+      try {
+        await deletePreset(id);
+        setPresets((prev) => prev.filter((p) => p.id !== id));
+      } catch (e) {
+        showToast(`프리셋을 삭제하지 못했어요: ${(e as Error).message}`);
+      }
+    },
+    [showToast],
   );
 
   // 생성 컨트롤(빈 회의 + 예시로 시작) — ready/empty 상태 모두에서 노출
@@ -220,6 +270,48 @@ export default function MeetingListScreen() {
             </div>
           )}
           {controls}
+
+          <section className={styles.presetSection}>
+            <span className={styles.sectionTitle}>프리셋에서 만들기</span>
+            {presetStatus === 'loading' && <p className={styles.hint}>프리셋을 불러오는 중…</p>}
+            {presetStatus === 'error' && (
+              <p className={styles.errorText}>프리셋을 불러오지 못했어요.</p>
+            )}
+            {presetStatus === 'ready' &&
+              (presets.length === 0 ? (
+                <p className={styles.hint}>저장된 프리셋이 없어요.</p>
+              ) : (
+                <div className={styles.cardList}>
+                  {presets.map((p) => {
+                    const name = p.name.trim() ? p.name : '이름 없는 프리셋';
+                    return (
+                      <Card
+                        key={p.id}
+                        className={styles.presetCard}
+                        onClick={() => void handleUsePreset(p)}
+                      >
+                        <div className={styles.presetInfo}>
+                          <span className={styles.meetingTitle}>{name}</span>
+                          <span className={styles.meetingDates}>
+                            만든 날 {formatDate(p.createdAt)} · 수정 {formatDate(p.updatedAt)}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleDeletePreset(p.id);
+                          }}
+                        >
+                          삭제
+                        </Button>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ))}
+          </section>
 
           {toast && (
             <div className={styles.toast} role="status">
