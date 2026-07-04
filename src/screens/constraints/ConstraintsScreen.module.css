@@ -54,15 +54,15 @@
   color: var(--gray-500);
 }
 
-/* 하단 CTA */
+/* 하단 CTA — 바로 위 프리셋 저장과 좁은 간격 유지 */
 .cta {
-  margin-top: var(--space-5);
+  margin-top: var(--space-3);
   padding-bottom: var(--space-6);
 }
 
-/* 프리셋 저장 컨트롤 */
+/* 프리셋 저장 컨트롤 — 위 콘텐츠와 넉넉한 간격 */
 .presetSave {
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);

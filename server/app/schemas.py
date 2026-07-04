@@ -185,3 +185,56 @@ class PresetListOut(BaseModel):
     """프리셋 목록 응답."""
 
     presets: list[PresetListItem]
+
+
+class SuggestAttendee(BaseModel):
+    """대안 제안용 참석자. 역할(role)·선택 여부(optional) 포함."""
+
+    id: str
+    name: str = ""
+    role: str = ""
+    optional: bool = False
+
+
+class SuggestConstraintItem(BaseModel):
+    """대안 제안용 제약 요약 항목(느슨한 형태로 수용)."""
+
+    attendeeId: str = ""
+    day: int | None = None
+    blockIndex: int | None = None
+    status: str = ""
+    reason: str = ""
+
+
+class SuggestAlternativeRequest(BaseModel):
+    """대안 제안 요청. 회의 현재 상태 중 필요한 것만 받는다.
+
+    - config: 회의 설정(dict; durationMinutes/location/dateRange 등 자유 형태).
+    - attendees: 참석자 목록(상한 방어).
+    - constraints: 제약 요약 목록(상한 방어).
+    - durationMinutes: 회의 길이(분). config 안에 있어도 되고 여기로 줘도 됨.
+    - dateRange: 조율 기간(dict; start/end).
+    """
+
+    config: dict[str, Any] = Field(default_factory=dict)
+    attendees: list[SuggestAttendee] = Field(default_factory=list, max_length=50)
+    constraints: list[SuggestConstraintItem] = Field(
+        default_factory=list, max_length=500
+    )
+    durationMinutes: int | None = None
+    dateRange: MeetsyncDateRange | None = None
+
+
+class AlternativeSuggestion(BaseModel):
+    """대안 1건. cost 는 low|medium|high."""
+
+    title: str
+    detail: str = ""
+    cost: str = "medium"
+
+
+class SuggestAlternativeResponse(BaseModel):
+    """대안 제안 응답."""
+
+    suggestions: list[AlternativeSuggestion]
+    source: str = "claude"

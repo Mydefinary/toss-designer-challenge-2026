@@ -1,0 +1,51 @@
+/* 현재 제약 요약 — 채팅 탭 하단 고정 패널 (문장형 요약) */
+.panel {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg-base, #f9fafb);
+  border: 1px solid var(--gray-200, #e5e8eb);
+  border-radius: var(--radius-md, 12px);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+/* 길면 스크롤 — 모바일 우선, 과밀 방지 */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.name {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--toss-gray);
+}
+
+.detail {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  line-height: 1.5;
+}

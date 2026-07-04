@@ -10,6 +10,7 @@ import type { Attendee, ConstraintCell, MeetingConfig, RankedCandidate } from '.
 import { Button } from '../../components/ui';
 import RankCard from '../result/RankCard';
 import TransparencyBoard from '../result/TransparencyBoard';
+import RankDetail from '../confirm/RankDetail';
 import CommentPanel from './CommentPanel';
 import {
   getComments,
@@ -226,7 +227,10 @@ export default function SharedView() {
           <p className={styles.sectionHint}>공유 시점에 추천 후보가 없었어요.</p>
         ) : (
           <div className={styles.rankList}>
-            {candidates.map((c) => (
+            {candidates.map((c) => {
+              const yields = Array.isArray(c.yielding) ? c.yielding : [];
+              const showDetail = c.rank === 1 || selectedRank === c.rank;
+              return (
               <div key={c.rank} className={styles.rankItem}>
                 <RankCard
                   candidate={c}
@@ -237,6 +241,53 @@ export default function SharedView() {
                     setSelectedRank((prev) => (prev === c.rank ? null : c.rank))
                   }
                 />
+                {yields.length === 0 ? (
+                  <div className={styles.yieldBannerPositive}>
+                    양보 없이 모두 가능한 시간이에요
+                  </div>
+                ) : (
+                  <div className={styles.yieldBanner}>
+                    <p>
+                      {yields.length === 1 && (
+                        <>
+                          <strong className={styles.yieldNames}>
+                            {(yields[0]?.attendee?.name || '참석자')}님
+                          </strong>
+                          이 {yields[0]?.reason || '회피'}를 양보해서 이 시간이 가능해졌어요
+                        </>
+                      )}
+                      {yields.length === 2 && (
+                        <>
+                          <strong className={styles.yieldNames}>
+                            {(yields[0]?.attendee?.name || '참석자')}·
+                            {(yields[1]?.attendee?.name || '참석자')}님
+                          </strong>
+                          이 양보해서 이 시간이 가능해졌어요
+                        </>
+                      )}
+                      {yields.length >= 3 && (
+                        <>
+                          <strong className={styles.yieldNames}>
+                            {(yields[0]?.attendee?.name || '참석자')}님 외 {yields.length - 1}명
+                          </strong>
+                          이 양보해서 이 시간이 가능해졌어요
+                        </>
+                      )}
+                    </p>
+                    <div className={styles.yieldReasons}>
+                      {yields.map((y, i) => (
+                        <span key={i} className={styles.yieldReasonItem}>
+                          {(y.attendee?.name || '참석자')}님 {y.reason || '회피'}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {showDetail && (
+                  <div className={styles.rankDetailWrap}>
+                    <RankDetail candidate={c} />
+                  </div>
+                )}
                 <div className={styles.voteRow}>
                   <span className={styles.voteLabel}>{c.rank}순위 의견</span>
                   <button
@@ -257,7 +308,8 @@ export default function SharedView() {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

@@ -1,0 +1,57 @@
+/* 제약 편집기 — 공통 격자 + 모드별 입력 수단 레이아웃 */
+
+/* 공통 상단 헤더 행 — 소제목 + 접기/펼치기 토글 */
+.commonHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 var(--space-2);
+}
+
+/* "현재 제약 현황" 소제목 — 작은 캡션 톤 */
+.subheading {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+}
+
+/* 접기/펼치기 토글 — 가벼운 텍스트(고스트) 버튼 */
+.toggle {
+  border: none;
+  background: transparent;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  color: var(--toss-blue);
+  cursor: pointer;
+}
+
+/* 요약 뱃지 행 — ButtonPanel 과 동일 */
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0 0 var(--space-2);
+}
+
+/* 격자 래퍼 — 기본 펼침 */
+.gridWrap {
+  max-height: none;
+  overflow: visible;
+  transition: max-height 0.2s ease;
+}
+
+/* 격자 래퍼 — 접힘: 상단 몇 행만 노출 */
+.gridWrapCollapsed {
+  max-height: 220px;
+  overflow-y: hidden;
+  transition: max-height 0.2s ease;
+}
+
+/* 공통 격자 ↔ 모드별 입력 수단 구분선 */
+.divider {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--gray-200, #e5e8eb);
+}

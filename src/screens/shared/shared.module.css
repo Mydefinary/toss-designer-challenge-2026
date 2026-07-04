@@ -113,6 +113,61 @@
   color: var(--gray-500);
 }
 
+/* ===== 양보 배너 (누가 양보했는지) ===== */
+.yieldBanner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--status-avoid-tint);
+  border-left: 3px solid var(--status-avoid);
+  border-radius: var(--radius-chip);
+  padding: var(--space-3);
+  font-size: var(--fs-caption);
+  color: var(--gray-700);
+  line-height: 1.5;
+}
+
+.yieldBanner p {
+  margin: 0;
+}
+
+.yieldBannerPositive {
+  background: var(--status-success-tint);
+  border-left: 3px solid var(--status-success);
+  border-radius: var(--radius-chip);
+  padding: var(--space-3);
+  color: var(--gray-700);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-caption);
+  line-height: 1.5;
+}
+
+.yieldNames {
+  color: var(--toss-gray);
+  font-weight: var(--fw-bold);
+}
+
+.yieldReasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.yieldReasonItem {
+  font-size: 11px;
+  color: var(--status-avoid);
+  background: var(--bg-base);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-2);
+  border: 1px solid var(--status-avoid);
+}
+
+.rankDetailWrap {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gray-100);
+}
+
 /* ===== 코멘트 작성 ===== */
 .field {
   display: flex;

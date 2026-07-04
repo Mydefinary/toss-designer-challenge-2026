@@ -1,6 +1,7 @@
 /**
  * 화면 2 — 제약 입력 v2.
- * 상단 모드 탭으로 버튼 격자 입력(ButtonPanel)과 자연어 채팅(ConstraintChat)을 전환한다.
+ * 공통 제약 편집기(ConstraintEditor)가 상단 격자를 항상 노출하고,
+ * 모드 탭으로 하단 입력 수단(버튼 격자 ↔ 자연어 채팅)만 전환한다.
  * 두 모드 모두 같은 store(useConstraints)를 구독·갱신한다.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -10,8 +11,7 @@ import { useMeetingActions } from '../store';
 import { createPreset } from '../lib/presetsApi';
 import { useMeetingLoader } from './useMeetingLoader';
 import { ModeTabs, type InputMode } from './constraints/ModeTabs';
-import { ButtonPanel } from './constraints/ButtonPanel';
-import { ConstraintChat } from './constraints/ConstraintChat';
+import { ConstraintEditor } from './constraints/ConstraintEditor';
 import styles from './constraints/ConstraintsScreen.module.css';
 
 export default function ConstraintsScreen() {
@@ -73,17 +73,10 @@ export default function ConstraintsScreen() {
       {/* 입력 방식 전환 */}
       <ModeTabs mode={mode} onChange={setMode} />
 
-      {/* 모드별 패널 — 둘 다 같은 store 구독 */}
-      {mode === 'button' ? <ButtonPanel /> : <ConstraintChat />}
+      {/* 모드별 패널 — 공통 격자 + 모드별 입력 수단, 둘 다 같은 store 구독 */}
+      <ConstraintEditor mode={mode} />
 
-      {/* 하단 CTA */}
-      <div className={styles.cta}>
-        <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/m/${id}/result`)}>
-          추천 결과 보기
-        </Button>
-      </div>
-
-      {/* 프리셋으로 저장 */}
+      {/* 프리셋으로 저장 — CTA 바로 위에 배치 */}
       <div className={styles.presetSave}>
         {!presetOpen ? (
           <Button variant="secondary" size="md" fullWidth onClick={openPresetForm}>
@@ -122,6 +115,13 @@ export default function ConstraintsScreen() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* 하단 CTA */}
+      <div className={styles.cta}>
+        <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/m/${id}/result`)}>
+          추천 결과 보기
+        </Button>
       </div>
 
       {presetToast && (

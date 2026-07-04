@@ -46,9 +46,19 @@ export interface SlotGridProps {
   brushStatus: Availability;
   /** 한 셀에 상태를 적용(즉시 setConstraint) */
   onApply: (slot: Slot, status: Availability) => void;
+  /** 읽기 전용 — 칠하기/키보드 입력을 막고 조회만 허용(채팅 모드 등) */
+  readOnly?: boolean;
 }
 
-export function SlotGrid({ attendeeId, lookup, explicitStatusOf, dayCount, brushStatus, onApply }: SlotGridProps) {
+export function SlotGrid({
+  attendeeId,
+  lookup,
+  explicitStatusOf,
+  dayCount,
+  brushStatus,
+  onApply,
+  readOnly = false,
+}: SlotGridProps) {
   // 드래그 칠하기 상태 — 한 stroke 동안 같은 target 을 유지해 일관되게 칠한다
   const painting = useRef(false);
   const strokeTarget = useRef<Availability>('available');
@@ -72,6 +82,7 @@ export function SlotGrid({ attendeeId, lookup, explicitStatusOf, dayCount, brush
   }
 
   function startPaint(slot: Slot) {
+    if (readOnly) return;
     const target = targetFor(slot);
     strokeTarget.current = target;
     painting.current = true;
@@ -79,6 +90,7 @@ export function SlotGrid({ attendeeId, lookup, explicitStatusOf, dayCount, brush
   }
 
   function continuePaint(slot: Slot) {
+    if (readOnly) return;
     if (!painting.current) return;
     onApply(slot, strokeTarget.current);
   }
@@ -123,13 +135,14 @@ export function SlotGrid({ attendeeId, lookup, explicitStatusOf, dayCount, brush
                   className={`${styles.cell} ${STATUS_CLASS[status] ?? ''} ${lunchAuto ? styles.lunch : ''}`}
                   aria-label={ariaLabel}
                   aria-pressed={status !== 'available'}
+                  disabled={readOnly}
                   title={lunchAuto ? '점심 시간 (기본 불가) — 가능으로 바꾸려면 가능 브러시로 칠하세요' : undefined}
                   onPointerDown={() => startPaint(slot)}
                   onPointerEnter={() => continuePaint(slot)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      onApply(slot, targetFor(slot));
+                      if (!readOnly) onApply(slot, targetFor(slot));
                     }
                   }}
                 >
