@@ -46,6 +46,54 @@
   flex-direction: column;
   gap: var(--space-2);
   cursor: pointer;
+  position: relative;
+  padding-right: var(--space-8);
+}
+
+.deleteBtn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+}
+
+.confirmBox {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: var(--bg-base);
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-2);
+  box-shadow: var(--shadow-card);
+}
+
+.confirmText {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+}
+
+.listScroll {
+  max-height: 60vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: var(--space-1);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.pageIndicator {
+  font-size: var(--fs-caption);
+  color: var(--gray-500);
+  font-weight: var(--fw-semibold);
 }
 
 .meetingTitle {

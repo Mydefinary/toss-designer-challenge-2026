@@ -9,6 +9,7 @@ import { Button, Card, Chip } from '../../components/ui';
 import {
   listMeetings,
   createMeeting,
+  deleteMeeting,
   uuid,
   type MeetingSummary,
   type MeetingData,
@@ -59,6 +60,8 @@ export default function MeetingListScreen() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [presets, setPresets] = useState<PresetSummary[]>([]);
   const [presetStatus, setPresetStatus] = useState<Status>('loading');
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -115,6 +118,12 @@ export default function MeetingListScreen() {
     };
   }, []);
 
+  // 목록이 줄어들면(삭제 등) 현재 페이지가 범위를 벗어나지 않도록 클램프
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(list.length / 9) - 1);
+    setPage((p) => Math.min(p, maxPage));
+  }, [list.length]);
+
   const showToast = useCallback((msg: string) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setToast(msg);
@@ -135,6 +144,7 @@ export default function MeetingListScreen() {
       };
       // 낙관적으로 임시 카드를 맨 앞에 붙이고 곧바로 생성 요청
       setList((prev) => [optimistic, ...prev]);
+      setPage(0);
       setCreateError(null);
       try {
         const { id } = await createMeeting(title, data);
@@ -181,6 +191,22 @@ export default function MeetingListScreen() {
     [showToast],
   );
 
+  // 회의 삭제 — 낙관적 제거 후 실패 시 원래 순서로 복구
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const snapshot = list; // 원래 순서 그대로 복구용
+      setList((cur) => cur.filter((it) => it.id !== id));
+      setConfirmingId(null);
+      try {
+        await deleteMeeting(id);
+      } catch (e) {
+        setList(snapshot);
+        showToast(`회의를 삭제하지 못했어요: ${(e as Error).message}`);
+      }
+    },
+    [list, showToast],
+  );
+
   // 생성 컨트롤(빈 회의 + 예시로 시작) — ready/empty 상태 모두에서 노출
   const controls = (
     <div className={styles.controls}>
@@ -217,6 +243,8 @@ export default function MeetingListScreen() {
     </div>
   );
 
+  const totalPages = Math.max(1, Math.ceil(list.length / 9));
+
   return (
     <div className={styles.screen}>
       <header className={styles.header}>
@@ -240,35 +268,99 @@ export default function MeetingListScreen() {
           {list.length === 0 ? (
             <p className={styles.hint}>아직 만든 회의가 없어요. 새 회의를 만들어보세요.</p>
           ) : (
-            <div className={styles.cardList}>
-              {list.map((m) => {
-                const title = m.title.trim() ? m.title : '제목 없는 회의';
-                // 생성 중인 임시 카드 — 클릭 불가, "만드는 중…" 표시
-                if (m.pending) {
-                  return (
-                    <Card
-                      key={m.id}
-                      className={`${styles.meetingCard} ${styles.meetingCardPending}`}
-                    >
-                      <span className={styles.meetingTitle}>{title}</span>
-                      <span className={styles.meetingPendingLabel}>만드는 중…</span>
-                    </Card>
-                  );
-                }
-                return (
-                  <Card
-                    key={m.id}
-                    className={styles.meetingCard}
-                    onClick={() => navigate(`/m/${m.id}/create`)}
+            <>
+              <div className={styles.listScroll}>
+                <div className={styles.cardList}>
+                  {list.slice(page * 9, page * 9 + 9).map((m) => {
+                    const title = m.title.trim() ? m.title : '제목 없는 회의';
+                    // 생성 중인 임시 카드 — 클릭 불가, "만드는 중…" 표시
+                    if (m.pending) {
+                      return (
+                        <Card
+                          key={m.id}
+                          className={`${styles.meetingCard} ${styles.meetingCardPending}`}
+                        >
+                          <span className={styles.meetingTitle}>{title}</span>
+                          <span className={styles.meetingPendingLabel}>만드는 중…</span>
+                        </Card>
+                      );
+                    }
+                    return (
+                      <Card
+                        key={m.id}
+                        className={styles.meetingCard}
+                        onClick={() => navigate(`/m/${m.id}/create`)}
+                      >
+                        {confirmingId === m.id ? (
+                          <div className={styles.confirmBox}>
+                            <span className={styles.confirmText}>삭제할까요?</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDelete(m.id);
+                              }}
+                            >
+                              삭제
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmingId(null);
+                              }}
+                            >
+                              취소
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={styles.deleteBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmingId(m.id);
+                            }}
+                          >
+                            삭제
+                          </Button>
+                        )}
+                        <span className={styles.meetingTitle}>{title}</span>
+                        <span className={styles.meetingDates}>
+                          만든 날 {formatDate(m.createdAt)} · 수정 {formatDate(m.updatedAt)}
+                        </span>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+              {list.length > 9 && (
+                <div className={styles.pagination}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={page === 0}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
                   >
-                    <span className={styles.meetingTitle}>{title}</span>
-                    <span className={styles.meetingDates}>
-                      만든 날 {formatDate(m.createdAt)} · 수정 {formatDate(m.updatedAt)}
-                    </span>
-                  </Card>
-                );
-              })}
-            </div>
+                    이전
+                  </Button>
+                  <span className={styles.pageIndicator}>
+                    {page + 1} / {totalPages}
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={page >= totalPages - 1}
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  >
+                    다음
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           {controls}
 

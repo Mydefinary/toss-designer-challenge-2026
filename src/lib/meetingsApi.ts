@@ -136,3 +136,20 @@ export async function updateMeeting(
     body: JSON.stringify(patch),
   });
 }
+
+/** 회의를 삭제 — 204/빈 본문을 허용(JSON 파싱하지 않음), 403 은 소유자 불일치 */
+export async function deleteMeeting(id: string): Promise<void> {
+  const base = getBase();
+  const path = `/api/meetsync/meetings/${encodeURIComponent(id)}?ownerToken=${encodeURIComponent(getOwnerToken())}`;
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, { method: 'DELETE' });
+  } catch (e) {
+    throw new Error(`네트워크 오류로 요청에 실패했어요: ${(e as Error).message}`);
+  }
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch {}
+    throw new Error(`요청 실패 (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`);
+  }
+}
