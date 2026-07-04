@@ -62,8 +62,14 @@ export interface MeetingConfig {
   /** 후보 기간 — ISO 'YYYY-MM-DD'. 영업일(월~금)만 슬롯 생성 */
   dateRange: { start: string; end: string };
   location: MeetingLocation;
-  /** 오프라인 후보 회의실 목록 (온라인이면 무시) */
+  /** 오프라인 후보 회의실 목록 — 이름 목록 용도(개수/이름 표시). 가용 판정은 roomBusy 로 통합 */
   rooms: Room[];
+  /**
+   * 회의실이 (모두 예약돼) 확보 불가한 슬롯들의 SlotKey 집합. 목록에 없으면(=기본) 가용(확보 가능).
+   * sparse 표현(예외 상태만 저장). 여러 회의실을 "하나라도 비면 가용"으로 통합한 단일 표현.
+   * 기존 저장 데이터 호환을 위해 recommend·store 에서 읽을 때 config.roomBusy ?? [] 로 방어 접근.
+   */
+  roomBusy: SlotKey[];
 }
 
 /** 슬롯에서 양보하는 사람 + 사유 (회피인데 포함됨) */
@@ -85,9 +91,10 @@ export interface RankedCandidate {
   satisfied: Attendee[];
   yielding: Yielding[];
   absent: Attendee[];
-  /** 오프라인일 때 점유 블럭 전부에 가용한 회의실(첫 매칭). 온라인이면 undefined */
-  room?: Room;
-  /** 온라인(장소무관)이거나, 오프라인이면 점유 블럭 전체를 커버하는 회의실이 확보됨. 후보로 남는 조건이라 항상 true */
+  /**
+   * 통합 회의실 가용 여부. 오프라인이면 점유블럭 전체가 회의실 가용이어야 후보로 남으므로 항상 true,
+   * 온라인이면 장소무관이라 항상 true. (후보가 존재하면 언제나 true)
+   */
   roomAvailable: boolean;
   /** 1..n */
   rank: number;
@@ -98,7 +105,7 @@ export type RelaxationType =
   | 'exclude-optional' // 선택자 제외
   | 'ignore-avoid' // 회피 무시(양보 전환)
   | 'adjust-hard' // 불가 부분 조정
-  | 'secure-room' // 회의실 확보(오프라인 유지, 전 블럭 가용 회의실 추가)
+  | 'secure-room' // 회의실 확보(오프라인 유지, roomBusy 를 비워 전 슬롯 가용화)
   | 'switch-online'; // 온라인 전환
 
 /** 제약 완화 제안 (3.5.1) */

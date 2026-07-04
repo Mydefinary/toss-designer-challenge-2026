@@ -57,6 +57,14 @@
   outline-offset: 2px;
 }
 
+/* 안내 문구 — 시간 가용은 제약 격자에서 편집 */
+.hint {
+  margin: 0;
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+  line-height: 1.4;
+}
+
 /* 회의실 항목 목록 */
 .list {
   list-style: none;

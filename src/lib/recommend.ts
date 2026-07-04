@@ -11,7 +11,6 @@ import type {
   RankedCandidate,
   RelaxationSuggestion,
   RelaxationType,
-  Room,
   Slot,
   SlotKey,
   Yielding,
@@ -195,13 +194,19 @@ function compositeStatus(
   return { status: 'available' };
 }
 
-/** 오프라인: 점유블럭 전부에 가용한 첫 회의실을 반환 (없으면 undefined) */
-function findRoom(rooms: Room[], day: number, blocks: number[]): Room | undefined {
-  const keys = blocks.map((b) => `${day}-${b}`);
-  return rooms.find((room) => {
-    const set = new Set(room.available);
-    return keys.every((k) => set.has(k));
-  });
+/**
+ * 통합 회의실 가용 판정 — 점유블럭 중 하나라도 roomBusy 에 있으면 false(확보 불가).
+ * roomBusy 는 여러 회의실을 "하나라도 비면 가용"으로 통합한 예외(예약) 슬롯 집합이다.
+ */
+export function roomAvailableForBlocks(
+  roomBusy: Set<SlotKey>,
+  day: number,
+  blocks: number[],
+): boolean {
+  for (const b of blocks) {
+    if (roomBusy.has(`${day}-${b}`)) return false;
+  }
+  return true;
 }
 
 interface InternalScored extends RankedCandidate {
@@ -221,6 +226,7 @@ function scoreCandidate(
   attendees: Attendee[],
   lookup: (attendeeId: string, slot: Slot) => ConstraintCell,
   config: MeetingConfig,
+  roomBusy: Set<SlotKey>,
 ): InternalScored | null {
   const satisfied: Attendee[] = [];
   const yielding: Yielding[] = [];
@@ -248,13 +254,12 @@ function scoreCandidate(
     }
   }
 
-  // 장소 평가 (V3) — 오프라인은 점유블럭 전체를 커버하는 회의실이 필수(Hard). 없으면 후보 제외.
-  let room: Room | undefined;
+  // 장소 평가 (V3) — 오프라인은 점유블럭 전체가 회의실 가용(roomBusy 미포함)이어야 함(Hard).
+  // 하나라도 예약(busy)이면 후보 제외. 온라인은 장소무관이라 무시.
   if (config.location === 'offline') {
-    room = findRoom(config.rooms, day, blocks);
-    if (!room) return null; // 회의실 부재 → 오프라인 회의 성립 불가(후보 제외)
+    if (!roomAvailableForBlocks(roomBusy, day, blocks)) return null;
   }
-  const roomAvailable = true; // 온라인(장소무관)이거나 오프라인이면 커버 회의실 확보됨 → 항상 true
+  const roomAvailable = true; // 온라인(장소무관)이거나 오프라인이면 통합 회의실 확보됨 → 항상 true
 
   const conflictCount = yielding.length + absent.length;
 
@@ -265,7 +270,6 @@ function scoreCandidate(
     satisfied,
     yielding,
     absent,
-    room,
     roomAvailable,
     rank: 0,
     conflictCount,
@@ -296,7 +300,6 @@ function stripInternal(c: InternalScored, rank: number): RankedCandidate {
     satisfied: c.satisfied,
     yielding: c.yielding,
     absent: c.absent,
-    room: c.room,
     roomAvailable: c.roomAvailable,
     rank,
   };
@@ -314,6 +317,8 @@ export function scoreAllCandidates(
   const lookup = makeConstraintLookup(constraints);
   const days = businessDayCount(config.dateRange);
   const n = blocksFor(config.durationMinutes);
+  // 통합 회의실 예약(busy) 슬롯 Set — 기존 시드 호환 위해 방어적 접근
+  const roomBusy = new Set<SlotKey>(config.roomBusy ?? []);
   const scored: InternalScored[] = [];
 
   for (let day = 0; day < days; day++) {
@@ -321,7 +326,7 @@ export function scoreAllCandidates(
     for (const startBlock of VALID_BLOCKS) {
       const blocks = occupiedBlocks(startBlock, n);
       if (!blocks) continue;
-      const candidate = scoreCandidate(day, startBlock, blocks, attendees, lookup, config);
+      const candidate = scoreCandidate(day, startBlock, blocks, attendees, lookup, config, roomBusy);
       if (candidate) scored.push(candidate);
     }
   }
@@ -430,11 +435,6 @@ function withCellStatus(
   );
 }
 
-/** 완화 평가용 가상 회의실 — 기간 내 전 유효블럭 가용. 오프라인을 유지한 채 회의실만 확보한 상황을 모사 */
-function fullAvailabilityRoom(config: MeetingConfig): Room {
-  return { id: 'relax-secured-room', name: '확보한 회의실', available: generateSlots(config).map((s) => slotKey(s)) };
-}
-
 /** 4가지 유형의 개별 완화 액션 전부 생성 */
 function buildActions(input: RelaxInputs): InternalAction[] {
   const { attendees, constraints, config } = input;
@@ -480,9 +480,10 @@ function buildActions(input: RelaxInputs): InternalAction[] {
     actions.push({
       type: 'secure-room',
       target: {},
+      // 통합 회의실을 전 슬롯 가용화 — roomBusy 를 빈 배열로 만든다(예약 해제)
       apply: (inp) => ({
         ...inp,
-        config: { ...inp.config, rooms: [...inp.config.rooms, fullAvailabilityRoom(inp.config)] },
+        config: { ...inp.config, roomBusy: [] },
       }),
     });
     actions.push({

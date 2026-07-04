@@ -70,9 +70,7 @@ export function RankCard({ config, candidate, index, selected, onSelect }: RankC
         {isOnline ? (
           <Badge tone="neutral">장소 무관</Badge>
         ) : candidate.roomAvailable ? (
-          <Badge tone="success">
-            회의실 가능{candidate.room?.name ? ` · ${candidate.room.name}` : ''}
-          </Badge>
+          <Badge tone="success">회의실 가능</Badge>
         ) : (
           <Badge tone="unavailable">회의실 없음</Badge>
         )}

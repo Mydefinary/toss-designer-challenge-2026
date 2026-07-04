@@ -344,6 +344,18 @@
   min-width: 0;
 }
 
+/* 회의실 열 헤더 아이콘 — 아바타 대신 자물쇠(방 아이콘) */
+.roomHeadIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  font-size: 12px;
+}
+
 .axisColName {
   font-size: 10px;
   font-weight: var(--fw-semibold);

@@ -61,6 +61,25 @@ function roomSlots(days: number[], blocks: number[]): SlotKey[] {
   return days.flatMap((day) => blocks.map((b) => `${day}-${b}`));
 }
 
+/** 통합 회의실 모델용 — 하루 전체 18블럭(점심 포함, recommend 의 VALID_BLOCKS 와 동일) */
+const ALL_BLOCKS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+
+/**
+ * 회의실 예약(busy) SlotKey 집합 — 전체 유효 슬롯(5일 × 18블럭)에서 keep(가용 유지) 슬롯을 제외한 나머지.
+ * sparse 표현이라 목록에 없으면 가용. keepDays × keepBlocks 만 비워두고 그 외 전부 예약 처리한다.
+ */
+function roomBusyExcept(keepDays: number[], keepBlocks: number[]): SlotKey[] {
+  const keep = new Set(keepDays.flatMap((day) => keepBlocks.map((b) => `${day}-${b}`)));
+  const busy: SlotKey[] = [];
+  for (const day of DAYS) {
+    for (const b of ALL_BLOCKS) {
+      const k = `${day}-${b}`;
+      if (!keep.has(k)) busy.push(k);
+    }
+  }
+  return busy;
+}
+
 const COLORS = ['#0064FF', '#7B61FF', '#00C2A8', '#FF6B6B', '#FFB020', '#00C880', '#FF9500', '#22B8CF'];
 
 // ============================================================
@@ -101,7 +120,7 @@ const scenario1: Scenario = {
   id: 'scenario-1',
   name: '전형적 충돌',
   purpose: '모든 변수(필수/선택·3단계 상태·오프라인 장소)가 한 번에 작동하는 표준 케이스',
-  config: { title: '제품팀 주간 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s1Rooms },
+  config: { title: '제품팀 주간 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s1Rooms, roomBusy: [] },
   attendees: s1Attendees,
   rooms: s1Rooms,
   constraints: s1Constraints,
@@ -132,7 +151,7 @@ const scenario2: Scenario = {
   id: 'scenario-2',
   name: '완벽한 시간 없음',
   purpose: '모든 슬롯에 최소 1명의 회피가 걸려 "양보 없이는 불가능"함을 투명성 보드가 증명',
-  config: { title: '신규 캠페인 킥오프', durationMinutes: 60, dateRange: DATE_RANGE, location: 'online', rooms: [] },
+  config: { title: '신규 캠페인 킥오프', durationMinutes: 60, dateRange: DATE_RANGE, location: 'online', rooms: [], roomBusy: [] },
   attendees: s2Attendees,
   rooms: [],
   constraints: s2Constraints,
@@ -170,7 +189,7 @@ const scenario3: Scenario = {
   id: 'scenario-3',
   name: '필수자 충돌 (후보 희소)',
   purpose: '필수 참석자들의 불가가 서로 어긋나 가능 후보가 1개로 극히 적은 상황. Hard 제약·완화 제안 검증',
-  config: { title: '분기 전략 확정 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s3Rooms },
+  config: { title: '분기 전략 확정 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s3Rooms, roomBusy: [] },
   attendees: s3Attendees,
   rooms: s3Rooms,
   constraints: s3Constraints,
@@ -189,14 +208,17 @@ const s4Attendees: Attendee[] = [
   { id: 's4-o3', name: '채원', role: 'optional', avatarColor: COLORS[5] },
 ];
 
-// 회의실 1개 — 월(day0) 오전 블럭 0–5 전부 가용, 그 외 없음
+// 회의실 이름 목록(개수/이름 표시용) — 실제 가용은 roomBusy 로 통합 판정
 const s4Rooms: Room[] = [{ id: 's4-room', name: '회의실 단독', available: roomSlots([0], MORNING) }];
+
+// 통합 회의실 병목 — 월(day0) 오전 blocks 0–5 만 가용, 그 외 전 슬롯 예약(busy)
+const s4RoomBusy: SlotKey[] = roomBusyExcept([0], MORNING);
 
 const scenario4: Scenario = {
   id: 'scenario-4',
   name: '장소 병목',
   purpose: '오프라인인데 회의실이 월요일 오전에만 있어 후보가 그 시간대로 좁혀지는 V3 강조 케이스. 완화에서 온라인 전환·회의실 확보가 병목을 푼다',
-  config: { title: '전사 타운홀 준비 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s4Rooms },
+  config: { title: '전사 타운홀 준비 회의', durationMinutes: 60, dateRange: DATE_RANGE, location: 'offline', rooms: s4Rooms, roomBusy: s4RoomBusy },
   attendees: s4Attendees,
   rooms: s4Rooms,
   constraints: [], // 시간 제약 없음(전원 가능) — 장소가 유일한 제약

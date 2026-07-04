@@ -41,6 +41,7 @@ const DEFAULT_CONFIG: MeetingConfig = {
   dateRange: { start: '', end: '' },
   location: 'online',
   rooms: [],
+  roomBusy: [],
 };
 
 /** 임의 JSON 스냅샷을 안전하게 SharedSnapshot 으로 변환 (필드 없으면 기본값/빈 배열) */
@@ -316,7 +317,7 @@ export default function SharedView() {
 
       <section className={styles.section} aria-label="모두의 상황">
         <h2 className={styles.sectionTitle}>모두의 상황</h2>
-        <TransparencyBoard attendees={attendees} constraints={constraints} />
+        <TransparencyBoard attendees={attendees} constraints={constraints} config={config} />
       </section>
 
       <CommentPanel

@@ -38,6 +38,7 @@ const sampleData: PresetData = {
     dateRange: { start: '2026-01-05', end: '2026-01-09' },
     location: 'offline',
     rooms: [],
+    roomBusy: [],
   },
   attendees: [{ id: 'a1', name: '민수', role: 'required' }],
   constraints: [],

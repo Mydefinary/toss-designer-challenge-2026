@@ -25,6 +25,7 @@ const sampleConfig: MeetingConfig = {
   dateRange: { start: '2026-01-05', end: '2026-01-09' },
   location: 'offline',
   rooms: [],
+  roomBusy: [],
 };
 
 const sampleAttendees: Attendee[] = [{ id: 'a1', name: '민수', role: 'required' }];

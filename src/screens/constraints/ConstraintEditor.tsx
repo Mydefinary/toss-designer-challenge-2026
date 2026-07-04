@@ -14,6 +14,7 @@ import type { InputMode } from './ModeTabs';
 import { AttendeeTabs } from './AttendeeTabs';
 import { BrushPalette } from './BrushPalette';
 import { SlotGrid } from './SlotGrid';
+import { RoomSlotGrid } from './RoomSlotGrid';
 import { ConstraintChat } from './ConstraintChat';
 import { ConstraintSummary } from './ConstraintSummary';
 import styles from './ConstraintEditor.module.css';
@@ -26,7 +27,11 @@ export function ConstraintEditor({ mode }: ConstraintEditorProps) {
   const constraints = useConstraints();
   const attendees = useAttendees();
   const config = useConfig();
-  const { setConstraint } = useMeetingActions();
+  const { setConstraint, setRoomSlot } = useMeetingActions();
+
+  // 통합 회의실 예약(busy) 슬롯 Set — 오프라인 회의실 격자 셀 상태 조회용. 기존 시드 호환 방어 접근
+  const roomBusySet = useMemo(() => new Set(config.roomBusy ?? []), [config.roomBusy]);
+  const isOffline = config.location === 'offline';
 
   // 선택 참석자 — 사라지면 첫 참석자로 폴백
   const [picked, setPicked] = useState<string>('');
@@ -122,6 +127,17 @@ export function ConstraintEditor({ mode }: ConstraintEditorProps) {
           readOnly={mode === 'chat'}
         />
       </div>
+
+      {/* 회의실 가용 — 오프라인일 때만. 회의실을 "하나의 참석자"처럼 시간대별 가용/예약 편집 */}
+      {isOffline && (
+        <div className={styles.roomSection}>
+          <div className={styles.commonHead}>
+            <h2 className={styles.subheading}>🔒 회의실 가용</h2>
+            <span className={styles.roomHint}>가용 ● / 예약 🔒 — 셀을 눌러 토글</span>
+          </div>
+          <RoomSlotGrid roomBusy={roomBusySet} dayCount={dayCount} onToggle={setRoomSlot} />
+        </div>
+      )}
 
       {/* 공통 격자 ↔ 모드별 입력 수단 구분선 */}
       <div className={styles.divider} />

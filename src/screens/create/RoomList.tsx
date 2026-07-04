@@ -45,6 +45,10 @@ export function RoomList({ rooms, onAdd, onRemove }: RoomListProps) {
         </button>
       </form>
 
+      <p className={styles.hint}>
+        실제 시간대별 회의실 가용/예약은 제약 격자의 “회의실 가용” 행에서 편집합니다.
+      </p>
+
       {rooms.length > 0 && (
         <ul className={styles.list}>
           {rooms.map((room) => (

@@ -36,6 +36,7 @@ function minimalData(): MeetingData {
       dateRange: structuredClone(defaultScenario.config.dateRange),
       location: 'offline',
       rooms: [],
+      roomBusy: [],
     },
     attendees,
     constraints: [],

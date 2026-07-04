@@ -17,6 +17,7 @@ import type {
   Room,
 } from '../types';
 import { recommend, suggestRelaxations, formatRange, generateSlots, slotKey, isLunchBlock } from '../lib/recommend';
+import type { Slot } from '../types';
 import { scenarios, defaultScenario, type Scenario } from '../data/scenarios';
 import type { MeetingData, MeetingRecord } from '../lib/meetingsApi';
 import { updateMeeting } from '../lib/meetingsApi';
@@ -115,6 +116,12 @@ const AVATAR_PALETTE = [
 export const MIN_ATTENDEES = 2;
 export const MAX_ATTENDEES = 12;
 
+/**
+ * 회의실 가상 참석자 id — 제약 격자/투명성 보드가 "회의실"을 하나의 참석자처럼 다룰 때 공유하는 식별자.
+ * 실제 attendees 배열에는 넣지 않는다(가상 행/열).
+ */
+export const ROOM_ROW_ID = '__room__';
+
 // ===== 순수 헬퍼 (init·actions 공유) =====
 
 /** 현재 입력으로 추천 후보를 파생 */
@@ -209,14 +216,8 @@ function applyOneRelaxation(
       return { attendees, constraints: nextConstraints, config };
     }
     case 'secure-room': {
-      // 오프라인 유지하며 전 유효블럭 가용한 회의실 1개 확보
-      const available = generateSlots(config).map((s) => slotKey(s));
-      const room: Room = {
-        id: `room-secured-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-        name: '확보한 회의실',
-        available,
-      };
-      return { attendees, constraints, config: { ...config, rooms: [...config.rooms, room] } };
+      // 오프라인 유지하며 통합 회의실을 전 슬롯 가용화 — roomBusy 를 비운다(예약 해제)
+      return { attendees, constraints, config: { ...config, roomBusy: [] } };
     }
     case 'switch-online': {
       // 온라인 전환
@@ -285,6 +286,11 @@ export interface MeetingState {
   removeAttendee: (id: string) => void;
   /** 제약 셀 추가/교체(available 이면 제거) 후 재계산 */
   setConstraint: (cell: ConstraintCell) => void;
+  /**
+   * 통합 회의실의 한 슬롯 가용/예약 토글 후 재계산.
+   * busy=true 면 해당 slotKey 를 config.roomBusy 에 추가(중복 방지), false 면 제거.
+   */
+  setRoomSlot: (slot: Slot, busy: boolean) => void;
   /** 후보/완화 재계산 (확정 랭킹은 건드리지 않음) */
   recompute: () => void;
   /** 현재 후보를 확정 랭킹으로 복사 */
@@ -492,6 +498,30 @@ export const useMeetingStore = create<MeetingState>()((set, get) => ({
     scheduleSave(get);
   },
 
+  setRoomSlot: (slot, busy) => {
+    const current = get().config;
+    const key = slotKey(slot);
+    // 기존 저장 데이터 호환 — roomBusy 없으면 빈 배열 기준으로 계산
+    const prev = current.roomBusy ?? [];
+    const has = prev.includes(key);
+    let nextBusy: string[];
+    if (busy) {
+      nextBusy = has ? prev : [...prev, key]; // 중복 방지 추가
+    } else {
+      nextBusy = has ? prev.filter((k) => k !== key) : prev; // 제거
+    }
+    // 변화 없으면 no-op(불필요한 재계산·저장 방지)
+    if (nextBusy === prev) return;
+    const config: MeetingConfig = { ...current, roomBusy: nextBusy };
+    const { attendees, constraints } = get();
+    set({
+      config,
+      candidates: deriveCandidates(attendees, constraints, config),
+      relaxations: deriveRelaxations(attendees, constraints, config),
+    });
+    scheduleSave(get);
+  },
+
   recompute: () => {
     const { attendees, constraints, config } = get();
     set({
@@ -688,6 +718,7 @@ export const useMeetingActions = (): {
   addAttendee: MeetingState['addAttendee'];
   removeAttendee: MeetingState['removeAttendee'];
   setConstraint: MeetingState['setConstraint'];
+  setRoomSlot: MeetingState['setRoomSlot'];
   recompute: MeetingState['recompute'];
   confirm: MeetingState['confirm'];
   moveToNextRank: MeetingState['moveToNextRank'];
@@ -712,6 +743,7 @@ export const useMeetingActions = (): {
       addAttendee: s.addAttendee,
       removeAttendee: s.removeAttendee,
       setConstraint: s.setConstraint,
+      setRoomSlot: s.setRoomSlot,
       recompute: s.recompute,
       confirm: s.confirm,
       moveToNextRank: s.moveToNextRank,

@@ -15,7 +15,7 @@ import {
   BLOCKS_PER_DAY,
   LUNCH_BLOCKS,
 } from './recommend';
-import type { Attendee, ConstraintCell, MeetingConfig, Room } from '../types';
+import type { Attendee, ConstraintCell, MeetingConfig, SlotKey } from '../types';
 import { scenarios } from '../data/scenarios';
 
 const s1 = scenarios[0]!;
@@ -31,8 +31,22 @@ function makeConfig(over?: Partial<MeetingConfig>): MeetingConfig {
     dateRange: { start: '2026-06-29', end: '2026-07-03' },
     location: 'online',
     rooms: [],
+    roomBusy: [],
     ...over,
   };
+}
+
+/** 통합 회의실을 day0 blocks 0,1 만 가용으로 두는 roomBusy — 그 외 5일×18블럭 전부 예약 */
+function roomBusyExceptDay0Blocks01(): SlotKey[] {
+  const keep = new Set(['0-0', '0-1']);
+  const busy: SlotKey[] = [];
+  for (let day = 0; day < 5; day++) {
+    for (const b of VALID_BLOCKS) {
+      const k = `${day}-${b}`;
+      if (!keep.has(k)) busy.push(k);
+    }
+  }
+  return busy;
 }
 
 describe('generateSlots / 블럭 모델', () => {
@@ -144,9 +158,9 @@ describe('시나리오 4 — 장소 병목 (오프라인 회의실 Hard 제약)'
   it('6. 회의실 없는 오프라인 슬롯은 후보에서 제외되고 남은 후보는 전부 회의실 보유', () => {
     const all = scoreAllCandidates(s4.attendees, s4.constraints, s4.config);
     expect(all.length).toBeGreaterThan(0);
-    // 남은 후보는 전부 roomAvailable=true & room 부착
-    expect(all.every((c) => c.roomAvailable && c.room !== undefined)).toBe(true);
-    // 회의실이 월요일(day0) 오전에만 있으므로 후보도 day0 에만 존재
+    // 남은 후보는 전부 roomAvailable=true (통합 회의실이 점유블럭 전체를 커버)
+    expect(all.every((c) => c.roomAvailable === true)).toBe(true);
+    // 회의실이 월요일(day0) 오전에만 가용하므로 후보도 day0 에만 존재
     expect(all.every((c) => c.startSlot.day === 0)).toBe(true);
   });
 
@@ -263,20 +277,20 @@ describe('applyDiversity 직접 검증', () => {
 });
 
 describe('오프라인 회의실 Hard 제약 (작업2)', () => {
-  it('12. 오프라인인데 점유블럭 전체를 커버하는 회의실이 없으면 후보 제외', () => {
+  it('12. 오프라인인데 점유블럭 중 하나라도 예약(busy)이면 후보 제외', () => {
     const a: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
-    // 회의실은 day0 blocks 0,1 만 가용 → 60분 후보는 [0,1] 하나만 성립
-    const rooms: Room[] = [{ id: 'r', name: '방', available: ['0-0', '0-1'] }];
-    const cfg = makeConfig({ location: 'offline', rooms });
+    // 통합 회의실은 day0 blocks 0,1 만 가용 → 그 외 전 슬롯 예약. 60분 후보는 [0,1] 하나만 성립
+    const roomBusy = roomBusyExceptDay0Blocks01();
+    const cfg = makeConfig({ location: 'offline', roomBusy });
     const all = scoreAllCandidates(a, [], cfg);
-    expect(all.every((c) => c.roomAvailable && c.room !== undefined)).toBe(true);
+    expect(all.every((c) => c.roomAvailable === true)).toBe(true);
     expect(all.map((c) => slotKey(c.startSlot))).toEqual(['0-0']);
   });
 
-  it('12-1. 온라인이면 회의실과 무관하게 후보 유지(roomAvailable=true, room 없음)', () => {
+  it('12-1. 온라인이면 회의실과 무관하게 후보 유지(roomAvailable=true)', () => {
     const a: Attendee[] = [{ id: 'R', name: '필수', role: 'required' }];
     const all = scoreAllCandidates(a, [], makeConfig({ location: 'online', rooms: [] }));
     expect(all.length).toBeGreaterThan(0);
-    expect(all.every((c) => c.roomAvailable && c.room === undefined)).toBe(true);
+    expect(all.every((c) => c.roomAvailable === true)).toBe(true);
   });
 });

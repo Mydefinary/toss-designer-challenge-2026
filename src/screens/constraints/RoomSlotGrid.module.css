@@ -1,0 +1,75 @@
+/* 회의실 전용 2단계 미니 격자 — 시간(행) × 요일(열). SlotGrid.module.css 패턴 재사용 */
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.dayHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--gray-500);
+  padding-bottom: var(--space-1);
+}
+
+.timeHead {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-1);
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+/* 셀 버튼 — 2단계(가용/예약) */
+.cell {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-chip);
+  background: var(--bg-base);
+  cursor: pointer;
+  padding: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+.cell:focus-visible {
+  outline: 2px solid var(--toss-blue);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* 가용 — 비어있음(예약되지 않음). 중립/파랑 ● */
+.available {
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--toss-blue);
+}
+
+/* 예약(busy) — 확보 불가. 회색 자물쇠 🔒 */
+.busy {
+  background: var(--gray-100);
+  border-color: var(--gray-300);
+  color: var(--gray-500);
+}

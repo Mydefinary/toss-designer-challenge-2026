@@ -49,6 +49,19 @@
   transition: max-height 0.2s ease;
 }
 
+/* 회의실 가용 섹션 (오프라인 전용) — 참석자 격자 아래 */
+.roomSection {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--gray-200, #e5e8eb);
+}
+
+/* 회의실 격자 안내 문구 — 옅은 캡션 */
+.roomHint {
+  font-size: var(--fs-caption);
+  color: var(--gray-400);
+}
+
 /* 공통 격자 ↔ 모드별 입력 수단 구분선 */
 .divider {
   margin-top: var(--space-5);

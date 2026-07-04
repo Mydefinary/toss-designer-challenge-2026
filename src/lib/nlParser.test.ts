@@ -15,6 +15,7 @@ const config: MeetingConfig = {
   dateRange: { start: '2026-06-29', end: '2026-07-03' },
   location: 'online',
   rooms: [],
+  roomBusy: [],
 };
 
 describe('nlParser — 로컬 규칙기반 파서', () => {

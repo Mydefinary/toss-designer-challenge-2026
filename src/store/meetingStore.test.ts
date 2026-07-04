@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { useMeetingStore, MIN_ATTENDEES, MAX_ATTENDEES } from './meetingStore';
 import { slotKey, scoreAllCandidates } from '../lib/recommend';
 import { scenarios } from '../data/scenarios';
@@ -60,6 +60,61 @@ describe('store.setConstraint — 점심 override', () => {
     expect(
       s.constraints.some((c) => c.attendeeId === attendeeId && c.slot.day === 0 && c.slot.blockIndex === 6),
     ).toBe(false);
+  });
+});
+
+describe('store.setRoomSlot — 통합 회의실 예약 토글', () => {
+  beforeEach(() => {
+    // 오프라인 시나리오(장소 병목)로 초기화
+    useMeetingStore.getState().loadScenario('scenario-4');
+  });
+
+  afterEach(() => {
+    // 다른 테스트 블럭이 기본(scenario-1)을 전제로 하므로 원복
+    useMeetingStore.getState().loadScenario('scenario-1');
+  });
+
+  it('busy 토글이 config.roomBusy 에 반영되고(중복 방지) getMeetingData 스냅샷에 포함된다', () => {
+    const before = useMeetingStore.getState().config.roomBusy ?? [];
+    // 병목 시나리오라 day0 오전(0-0)은 기본 가용 → 예약 추가
+    expect(before.includes('0-0')).toBe(false);
+
+    useMeetingStore.getState().setRoomSlot({ day: 0, blockIndex: 0 }, true);
+    let s = useMeetingStore.getState();
+    expect(s.config.roomBusy.includes('0-0')).toBe(true);
+    const lenAfterAdd = s.config.roomBusy.length;
+
+    // 같은 슬롯 다시 busy → 중복 추가 안 함(no-op)
+    useMeetingStore.getState().setRoomSlot({ day: 0, blockIndex: 0 }, true);
+    s = useMeetingStore.getState();
+    expect(s.config.roomBusy.length).toBe(lenAfterAdd);
+
+    // getMeetingData 스냅샷에 roomBusy 가 포함된다(config 통째 동기화)
+    const data = useMeetingStore.getState().getMeetingData();
+    expect(data.config.roomBusy.includes('0-0')).toBe(true);
+
+    // busy 해제 → 제거
+    useMeetingStore.getState().setRoomSlot({ day: 0, blockIndex: 0 }, false);
+    expect(useMeetingStore.getState().config.roomBusy.includes('0-0')).toBe(false);
+  });
+
+  it('예약 해제(busy=false)가 오프라인 후보를 재계산한다', () => {
+    // day0 오전 blocks 0,1 을 예약하면 그 시작 후보([0,1])가 사라진다
+    const has01 = () =>
+      scoreAllCandidates(
+        useMeetingStore.getState().attendees,
+        useMeetingStore.getState().constraints,
+        useMeetingStore.getState().config,
+      ).some((c) => slotKey(c.startSlot) === '0-0');
+
+    expect(has01()).toBe(true); // 초기: day0 오전 후보 존재
+    useMeetingStore.getState().setRoomSlot({ day: 0, blockIndex: 0 }, true);
+    useMeetingStore.getState().setRoomSlot({ day: 0, blockIndex: 1 }, true);
+    expect(has01()).toBe(false); // 예약 후 사라짐
+    // 스토어 파생 candidates 도 재계산되어 있어야 한다
+    expect(useMeetingStore.getState().candidates.every((c) => slotKey(c.startSlot) !== '0-0')).toBe(
+      true,
+    );
   });
 });
 

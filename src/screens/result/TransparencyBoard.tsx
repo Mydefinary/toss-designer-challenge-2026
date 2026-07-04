@@ -6,10 +6,10 @@
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Attendee, Availability, ConstraintCell } from '../../types';
-import { useAttendees, useConstraints } from '../../store';
+import type { Attendee, Availability, ConstraintCell, MeetingConfig } from '../../types';
+import { useAttendees, useConstraints, useConfig } from '../../store';
 import { Avatar } from '../../components/ui';
-import { dayName, formatBlock, blockStartLabel, isLunchBlock, VALID_BLOCKS } from '../../lib/recommend';
+import { dayName, formatBlock, blockStartLabel, slotKey, isLunchBlock, VALID_BLOCKS } from '../../lib/recommend';
 import { STATUS_ICON } from './constants';
 import styles from './result.module.css';
 
@@ -17,6 +17,9 @@ const cx = (...classes: (string | false | undefined)[]) =>
   classes.filter(Boolean).join(' ');
 
 const DAYS = [0, 1, 2, 3, 4];
+
+/** 통합 회의실 열의 가상 참석자 id — 선택 셀 판정용 (실제 참석자 아님) */
+const ROOM_COL_ID = '__room__';
 
 interface SelectedCell {
   attendeeId: string;
@@ -42,17 +45,26 @@ interface TransparencyBoardProps {
   attendees?: Attendee[];
   /** 주어지면 store 대신 이 제약 목록을 사용 */
   constraints?: ConstraintCell[];
+  /** 주어지면 store 대신 이 설정을 사용(location·roomBusy). 없으면 store useConfig() */
+  config?: MeetingConfig;
 }
 
 export default function TransparencyBoard({
   attendees: attendeesProp,
   constraints: constraintsProp,
+  config: configProp,
 }: TransparencyBoardProps = {}) {
   // 훅은 조건 없이 항상 호출하고, props 가 주어지면 그 값으로 대체한다.
   const storeAttendees = useAttendees();
   const storeConstraints = useConstraints();
+  const storeConfig = useConfig();
   const attendees = attendeesProp ?? storeAttendees;
   const constraints = constraintsProp ?? storeConstraints;
+  const config = configProp ?? storeConfig;
+
+  // 오프라인일 때만 통합 회의실 열을 추가. roomBusy 는 기존 시드 호환 방어 접근
+  const showRoom = config.location === 'offline';
+  const roomBusy = showRoom ? new Set(config.roomBusy ?? []) : null;
 
   const [expanded, setExpanded] = useState(false);
   const [selectedDay, setSelectedDay] = useState(0);
@@ -89,6 +101,32 @@ export default function TransparencyBoard({
         onClick={() => setSelected({ attendeeId, day, blockIndex })}
       >
         {STATUS_ICON[status]}
+      </button>
+    );
+  };
+
+  /** 회의실 통합 셀 렌더 — 가용(●)/예약(✕). roomBusy 미포함이면 가용 */
+  const renderRoomCell = (day: number, blockIndex: number): ReactNode => {
+    const busy = roomBusy!.has(slotKey({ day, blockIndex }));
+    const stateLabel = busy ? '예약' : '가용';
+    const isSel =
+      selected?.attendeeId === ROOM_COL_ID &&
+      selected.day === day &&
+      selected.blockIndex === blockIndex;
+    return (
+      <button
+        key={`room-${day}-${blockIndex}`}
+        type="button"
+        className={cx(
+          styles.cell,
+          busy ? styles.cellUnavailable : styles.cellAvailable,
+          isSel && styles.cellSelected,
+        )}
+        title={`회의실 · ${formatBlock({ day, blockIndex })} — ${stateLabel}`}
+        aria-label={`회의실 ${formatBlock({ day, blockIndex })} ${stateLabel}`}
+        onClick={() => setSelected({ attendeeId: ROOM_COL_ID, day, blockIndex })}
+      >
+        {busy ? STATUS_ICON.unavailable : STATUS_ICON.available}
       </button>
     );
   };
@@ -143,9 +181,11 @@ export default function TransparencyBoard({
       <div className={styles.axisScroll}>
         <div
           className={styles.axisGrid}
-          style={{ gridTemplateColumns: `52px repeat(${attendees.length}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `52px repeat(${attendees.length + (showRoom ? 1 : 0)}, minmax(0, 1fr))`,
+          }}
         >
-          {/* 헤더행 — 좌상단 코너(요일) + 참석자 열 헤더(아바타·이름) */}
+          {/* 헤더행 — 좌상단 코너(요일) + 참석자 열 헤더(아바타·이름) + (오프라인) 회의실 열 */}
           <span className={styles.axisCorner} title={dayName(selectedDay)}>
             {dayName(selectedDay).charAt(0)}
           </span>
@@ -155,11 +195,18 @@ export default function TransparencyBoard({
               <span className={styles.axisColName}>{a.name}</span>
             </span>
           ))}
-          {/* 각 시간 블럭 행 — 행 헤더(시작시각) + 참석자별 셀 */}
+          {showRoom && (
+            <span className={styles.axisColHead} title="회의실 (통합 · 하나라도 비면 가용)">
+              <span className={styles.roomHeadIcon} aria-hidden="true">🔒</span>
+              <span className={styles.axisColName}>회의실</span>
+            </span>
+          )}
+          {/* 각 시간 블럭 행 — 행 헤더(시작시각) + 참석자별 셀 + (오프라인) 회의실 셀 */}
           {VALID_BLOCKS.map((b) => (
             <Row key={`row-${b}`}>
               <span className={styles.axisRowHead}>{blockStartLabel(b)}</span>
               {attendees.map((a) => renderCell(a.id, a.name, selectedDay, b))}
+              {showRoom && renderRoomCell(selectedDay, b)}
             </Row>
           ))}
         </div>
@@ -168,6 +215,14 @@ export default function TransparencyBoard({
       {selected && (
         <p className={styles.cellReason} role="status">
           {(() => {
+            // 회의실 열 셀 — 가용/예약 표시
+            if (selected.attendeeId === ROOM_COL_ID && roomBusy) {
+              const busy = roomBusy.has(slotKey({ day: selected.day, blockIndex: selected.blockIndex }));
+              return `회의실 · ${formatBlock({
+                day: selected.day,
+                blockIndex: selected.blockIndex,
+              })} — ${busy ? '예약' : '가용'}`;
+            }
             const a = attendees.find((x) => x.id === selected.attendeeId);
             const cell = cellOf(selected.attendeeId, selected.day, selected.blockIndex);
             const lunchAuto = !cell && isLunchBlock(selected.blockIndex);
@@ -184,6 +239,12 @@ export default function TransparencyBoard({
         <span className={styles.legendItem}>{STATUS_ICON.available} 가능</span>
         <span className={styles.legendItem}>{STATUS_ICON.avoid} 회피</span>
         <span className={styles.legendItem}>{STATUS_ICON.unavailable} 불가</span>
+        {showRoom && (
+          <>
+            <span className={styles.legendItem}>{STATUS_ICON.available} 회의실 가용</span>
+            <span className={styles.legendItem}>{STATUS_ICON.unavailable} 회의실 예약</span>
+          </>
+        )}
       </div>
     </div>
   );
