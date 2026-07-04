@@ -56,7 +56,10 @@ export function useMeetingLoader(): {
     if (!id) return;
     const handle = connectMeetingSocket(id, {
       onInit: (data) => {
-        applyRemoteData(data);
+        // 이미 이 회의를 로컬에 들고 있으면(미저장 편집·완화 적용 등이 있을 수 있음)
+        // 서버 초기 스냅샷으로 덮어쓰지 않는다. 화면 전환 시 재연결로 로컬 상태가 리셋되는 버그 방지.
+        // (새 진입/새로고침은 currentMeetingId 가 null 이라 정상적으로 반영된다.)
+        if (useMeetingStore.getState().currentMeetingId !== id) applyRemoteData(data);
       },
       onUpdate: (msg) => {
         // 자신이 보낸 편집은 에코 방지를 위해 무시
